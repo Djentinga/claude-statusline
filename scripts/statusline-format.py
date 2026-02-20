@@ -34,10 +34,14 @@ except Exception:
 # --- Helpers ---
 COMPACT_AT = 95  # auto-compact threshold
 
-def usage_color(val):
-    if val < 50: return GRN
-    if val < 75: return YEL
-    if val < 90: return RED
+def budget_color(actual, expected):
+    """Color based on how far over/under budget. Green=under, Yellow=slightly over, Red=over, BoldRed=way over."""
+    if expected is None:
+        return GRN if actual < 50 else YEL if actual < 75 else RED if actual < 90 else BRD
+    over = actual - expected
+    if over <= 0: return GRN
+    if over <= 10: return YEL
+    if over <= 25: return RED
     return BRD
 
 def ctx_color(val):
@@ -90,7 +94,7 @@ def format_usage(usage):
     # 5-hour
     if h5 is not None:
         h5v = int(h5)
-        c = usage_color(h5v)
+        c = budget_color(h5v, h5_exp)
         h5s = "🕐 " + c + bar(h5v, h5_exp) + " " + str(h5v) + "/100" + R
     else:
         h5s = "🕐 ?"
@@ -106,7 +110,7 @@ def format_usage(usage):
     # 7-day
     if d7 is not None:
         d7v = int(d7)
-        c = usage_color(d7v)
+        c = budget_color(d7v, d7_exp)
         d7s = "📅 " + c + bar(d7v, d7_exp) + " " + str(d7v) + "/100" + R
     else:
         d7s = "📅 ?"
