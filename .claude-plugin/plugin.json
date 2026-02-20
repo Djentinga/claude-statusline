@@ -1,0 +1,8 @@
+{
+  "name": "joachim-statusline",
+  "description": "Custom statusline with context-to-compact bar, API usage, and Rider status",
+  "version": "1.0.0",
+  "author": {
+    "name": "Joachim Arting"
+  }
+}
