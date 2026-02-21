@@ -95,7 +95,8 @@ def format_usage(usage):
     if h5 is not None:
         h5v = int(h5)
         c = budget_color(h5v, h5_exp)
-        h5s = "🕐 " + c + bar(h5v, h5_exp) + " " + str(h5v) + " (" + str(h5v, h5_exp) + ")" + R
+        exp_str = str(int(h5_exp)) if h5_exp is not None else "?"
+        h5s = "🕐 " + c + bar(h5v, h5_exp) + " " + str(h5v) + " (" + exp_str + ")" + R
     else:
         h5s = "🕐 ?"
     # Reset time
@@ -111,7 +112,8 @@ def format_usage(usage):
     if d7 is not None:
         d7v = int(d7)
         c = budget_color(d7v, d7_exp)
-        d7s = "📅 " + c + bar(d7v, d7_exp) + " " + str(d7v) + " (" + str(d7_exp) + ")" + R
+        exp_str = str(int(d7_exp)) if d7_exp is not None else "?"
+        d7s = "📅 " + c + bar(d7v, d7_exp) + " " + str(d7v) + " (" + exp_str + ")" + R
     else:
         d7s = "📅 ?"
     return h5s + resets + SEP + d7s
