@@ -22,6 +22,10 @@ try:
     pct = int(sys.argv[2]) if len(sys.argv) > 2 else 0
 except (TypeError, ValueError):
     pct = 0
+try:
+    tokens_used = int(sys.argv[3]) if len(sys.argv) > 3 else 0
+except (TypeError, ValueError):
+    tokens_used = 0
 
 # --- Cache ---
 cache = None
@@ -125,10 +129,11 @@ usage = cache.get("usage") if cache else None
 clamped_pct = max(0, min(pct, 100))
 ctx_pct = min(round(clamped_pct / COMPACT_AT * 100), 100)
 clr = ctx_color(ctx_pct)
+tokens_k = str(tokens_used // 1000) + "k" if tokens_used else "?"
 
 parts = [
     CYN + "⚡ " + model + R,
-    "Ctx " + clr + bar(ctx_pct) + " " + str(ctx_pct) + "/100" + R,
+    "Ctx " + clr + bar(ctx_pct) + " " + tokens_k + R,
     format_usage(usage),
     rider,
 ]

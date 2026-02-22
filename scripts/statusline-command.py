@@ -21,6 +21,10 @@ try:
     pct = int(float(ctx.get("used_percentage") or 0))
 except (TypeError, ValueError):
     pct = 0
+try:
+    tokens_used = int(ctx.get("used_tokens") or ctx.get("used") or 0)
+except (TypeError, ValueError):
+    tokens_used = 0
 
 # --- Trigger background data refresh if cache is stale ---
 try:
@@ -44,7 +48,7 @@ if time.time() - cache_ts > CACHE_TTL:
 # --- Call formatter and capture its COMPLETE output before writing ---
 try:
     result = subprocess.run(
-        [sys.executable, FORMAT_SCRIPT, model, str(pct)],
+        [sys.executable, FORMAT_SCRIPT, model, str(pct), str(tokens_used)],
         capture_output=True,
         timeout=2,
     )
