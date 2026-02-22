@@ -22,7 +22,8 @@ try:
 except (TypeError, ValueError):
     pct = 0
 try:
-    tokens_used = int(ctx.get("used_tokens") or ctx.get("used") or 0)
+    ctx_size = int(ctx.get("context_window_size") or 200000)
+    tokens_used = int(ctx_size * float(ctx.get("used_percentage") or 0) / 100)
 except (TypeError, ValueError):
     tokens_used = 0
 
