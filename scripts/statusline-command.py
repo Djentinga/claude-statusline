@@ -22,10 +22,10 @@ try:
 except (TypeError, ValueError):
     pct = 0
 try:
-    ctx_size = int(ctx.get("context_window_size") or 200000)
-    tokens_used = int(ctx_size * float(ctx.get("used_percentage") or 0) / 100)
+    ctx_size = int(float(ctx.get("context_window_size") or 200000))
 except (TypeError, ValueError):
-    tokens_used = 0
+    ctx_size = 200000
+tokens_used = ctx_size * pct // 100
 
 # --- Trigger background data refresh if cache is stale ---
 try:
