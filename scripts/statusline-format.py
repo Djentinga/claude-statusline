@@ -36,7 +36,7 @@ except Exception:
     pass
 
 # --- Helpers ---
-COMPACT_AT = 95  # auto-compact threshold
+COMPACT_AT = 166000  # auto-compact token threshold
 
 def budget_color(actual, expected):
     """Color based on how far over/under budget. Green=under, Yellow=slightly over, Red=over, BoldRed=way over."""
@@ -126,8 +126,7 @@ def format_usage(usage):
 rider_running = cache.get("rider_running", False) if cache else False
 rider = (GRN + "⌨ Connected" + R) if rider_running else "⌨ Disconnected"
 usage = cache.get("usage") if cache else None
-clamped_pct = max(0, min(pct, 100))
-ctx_pct = min(round(clamped_pct / COMPACT_AT * 100), 100)
+ctx_pct = min(round(tokens_used / COMPACT_AT * 100), 100) if tokens_used else 0
 clr = ctx_color(ctx_pct)
 tokens_k = str(tokens_used // 1000) + "k" if tokens_used else "?"
 
