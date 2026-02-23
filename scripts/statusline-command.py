@@ -54,6 +54,8 @@ try:
         timeout=2,
     )
     output = result.stdout
+    if not output:
+        raise ValueError("empty output")
 except Exception:
     output = (model + " | ?").encode("utf-8")
 

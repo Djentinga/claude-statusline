@@ -97,7 +97,7 @@ def format_usage(usage):
     d7_exp = calc_expected(d7_resets, WINDOW_7D)
     # 5-hour
     if h5 is not None:
-        h5v = int(h5)
+        h5v = int(float(h5))
         c = budget_color(h5v, h5_exp)
         exp_str = str(int(h5_exp)) if h5_exp is not None else "?"
         h5s = "🕐 " + c + bar(h5v, h5_exp) + " " + str(h5v) + " (" + exp_str + ")" + R
@@ -114,7 +114,7 @@ def format_usage(usage):
             pass
     # 7-day
     if d7 is not None:
-        d7v = int(d7)
+        d7v = int(float(d7))
         c = budget_color(d7v, d7_exp)
         exp_str = str(int(d7_exp)) if d7_exp is not None else "?"
         d7s = "📅 " + c + bar(d7v, d7_exp) + " " + str(d7v) + " (" + exp_str + ")" + R
@@ -126,9 +126,9 @@ def format_usage(usage):
 rider_running = cache.get("rider_running", False) if cache else False
 rider = (GRN + "⌨ Connected" + R) if rider_running else "⌨ Disconnected"
 usage = cache.get("usage") if cache else None
-ctx_pct = min(round(tokens_used / COMPACT_AT * 100), 100) if tokens_used else 0
+ctx_pct = min(round(tokens_used / COMPACT_AT * 100), 100)
 clr = ctx_color(ctx_pct)
-tokens_k = str(tokens_used // 1000) + "k" if tokens_used else "?"
+tokens_k = str(tokens_used // 1000) + "k"
 
 parts = [
     CYN + "⚡ " + model + R,
@@ -137,5 +137,5 @@ parts = [
     rider,
 ]
 
-os.write(1, SEP.join(parts).encode("utf-8"))
+os.write(1, (SEP.join(parts) + R).encode("utf-8"))
 os._exit(0)
