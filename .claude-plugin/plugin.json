@@ -1,7 +1,7 @@
 {
   "name": "Djentinga-statusline",
   "description": "Custom statusline with context-to-compact bar, API usage, and Rider status",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "author": {
     "name": "Joachim Arting"
   }

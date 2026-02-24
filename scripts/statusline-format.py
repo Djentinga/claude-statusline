@@ -148,9 +148,9 @@ def format_statusline(model, pct, tokens_used):
 
     rider_up = cache.get("rider_running", False) if cache else False
     serena_up = cache.get("serena_running", False) if cache else False
-    rider = (GRN if rider_up else DIM) + "🖧 Rider" + R
-    serena = (GRN if serena_up else DIM) + "🖧 Serena" + R
-    services = rider + " " + serena
+    rider = (GRN if rider_up else DIM) + "▣ Rider" + R
+    serena = (GRN if serena_up else DIM) + "▣ Serena" + R
+    services = rider + SEP + serena
     usage = cache.get("usage") if cache else None
 
     # Stale cache indicator
