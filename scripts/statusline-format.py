@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Formatter for Claude Code statusline. Called by statusline-command.py."""
-import sys, json, os
+"""Formatter for Claude Code statusline. Can be called standalone or imported."""
+import sys, json, os, time
 from datetime import datetime
 
 R   = "\x1b[0m"
+DIM = "\x1b[2m"
 CYN = "\x1b[1;36m"
 GRN = "\x1b[32m"
 YEL = "\x1b[33m"
@@ -15,31 +16,13 @@ BAR_W = 8
 WINDOW_5H = 5 * 3600
 WINDOW_7D = 7 * 24 * 3600
 SEP = " │ "
-
-# --- Args ---
-model = sys.argv[1] if len(sys.argv) > 1 else "?"
-try:
-    pct = int(sys.argv[2]) if len(sys.argv) > 2 else 0
-except (TypeError, ValueError):
-    pct = 0
-try:
-    tokens_used = int(sys.argv[3]) if len(sys.argv) > 3 else 0
-except (TypeError, ValueError):
-    tokens_used = 0
-
-# --- Cache ---
-cache = None
-try:
-    with open(CACHE_PATH) as f:
-        cache = json.load(f)
-except Exception:
-    pass
-
-# --- Helpers ---
 COMPACT_AT = 166000  # auto-compact token threshold
+CACHE_TTL = 120
+STALE_THRESHOLD = 2 * CACHE_TTL
+
 
 def budget_color(actual, expected):
-    """Color based on how far over/under budget. Green=under, Yellow=slightly over, Red=over, BoldRed=way over."""
+    """Color based on how far over/under budget."""
     if expected is None:
         return GRN if actual < 50 else YEL if actual < 75 else RED if actual < 90 else BRD
     over = actual - expected
@@ -48,12 +31,14 @@ def budget_color(actual, expected):
     if over <= 25: return RED
     return BRD
 
+
 def ctx_color(val):
     """val is 0-100 where 100 = auto-compact threshold."""
     if val < 50: return GRN
     if val < 75: return YEL
     if val < 90: return RED
     return BRD
+
 
 def calc_expected(resets_at_str, window_secs):
     try:
@@ -63,6 +48,7 @@ def calc_expected(resets_at_str, window_secs):
         return max(0, min(elapsed / window_secs * 100, 100))
     except Exception:
         return None
+
 
 def bar(val, cutoff=None, width=BAR_W):
     clamped = max(0, min(val, 100))
@@ -81,6 +67,7 @@ def bar(val, cutoff=None, width=BAR_W):
         else:
             chars.append("░")
     return "".join(chars)
+
 
 def format_usage(usage):
     if not usage:
@@ -122,20 +109,56 @@ def format_usage(usage):
         d7s = "📅 ?"
     return h5s + resets + SEP + d7s
 
-# --- Assemble ---
-rider_running = cache.get("rider_running", False) if cache else False
-rider = (GRN + "⌨ Connected" + R) if rider_running else "⌨ Disconnected"
-usage = cache.get("usage") if cache else None
-ctx_pct = min(round(tokens_used / COMPACT_AT * 100), 100)
-clr = ctx_color(ctx_pct)
-tokens_k = str(tokens_used // 1000) + "k"
 
-parts = [
-    CYN + "⚡ " + model + R,
-    "Ctx " + clr + bar(ctx_pct) + " " + tokens_k + R,
-    format_usage(usage),
-    rider,
-]
+def format_tokens(tokens_used):
+    """Show raw number when < 1000, otherwise Nk."""
+    if tokens_used < 1000:
+        return str(tokens_used)
+    return str(tokens_used // 1000) + "k"
 
-os.write(1, (SEP.join(parts) + R).encode("utf-8"))
-os._exit(0)
+
+def format_statusline(model, pct, tokens_used):
+    """Build the full statusline. Returns UTF-8 bytes."""
+    # --- Cache ---
+    cache = None
+    try:
+        with open(CACHE_PATH) as f:
+            cache = json.load(f)
+    except Exception:
+        pass
+
+    rider_running = cache.get("rider_running", False) if cache else False
+    rider = (GRN + "⌨ Connected" + R) if rider_running else "⌨ Disconnected"
+    usage = cache.get("usage") if cache else None
+
+    # Stale cache indicator
+    cache_ts = cache.get("ts", 0) if cache else 0
+    stale = time.time() - cache_ts > STALE_THRESHOLD if cache_ts else True
+    stale_prefix = DIM + "~" + R if stale else ""
+
+    ctx_pct = min(round(tokens_used / COMPACT_AT * 100), 100)
+    clr = ctx_color(ctx_pct)
+
+    parts = [
+        CYN + "⚡ " + model + R,
+        "Ctx " + clr + bar(ctx_pct) + " " + format_tokens(tokens_used) + R,
+        stale_prefix + format_usage(usage),
+        rider,
+    ]
+
+    return (SEP.join(parts) + R).encode("utf-8")
+
+
+# --- Standalone entry point (backwards compat) ---
+if __name__ == "__main__":
+    model = sys.argv[1] if len(sys.argv) > 1 else "?"
+    try:
+        pct = int(sys.argv[2]) if len(sys.argv) > 2 else 0
+    except (TypeError, ValueError):
+        pct = 0
+    try:
+        tokens_used = int(sys.argv[3]) if len(sys.argv) > 3 else 0
+    except (TypeError, ValueError):
+        tokens_used = 0
+    os.write(1, format_statusline(model, pct, tokens_used))
+    os._exit(0)

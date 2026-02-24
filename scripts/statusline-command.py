@@ -1,12 +1,19 @@
 #!/usr/bin/env python3
-"""Claude Code statusline entry point. Captures formatter output safely."""
-import sys, json, os, time, subprocess
+"""Claude Code statusline entry point. Imports formatter directly."""
+import sys, json, os, time, subprocess, importlib.util
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 CACHE_PATH = os.path.expanduser("~/.claude/.statusline-cache.json")
 DATA_SCRIPT = os.path.join(SCRIPT_DIR, "statusline-data.py")
-FORMAT_SCRIPT = os.path.join(SCRIPT_DIR, "statusline-format.py")
 CACHE_TTL = 120
+
+# --- Import formatter from hyphenated filename ---
+_spec = importlib.util.spec_from_file_location(
+    "statusline_format", os.path.join(SCRIPT_DIR, "statusline-format.py")
+)
+_mod = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_mod)
+format_statusline = _mod.format_statusline
 
 # --- Read stdin from Claude Code, then close immediately ---
 try:
@@ -46,14 +53,9 @@ if time.time() - cache_ts > CACHE_TTL:
     except Exception:
         pass
 
-# --- Call formatter and capture its COMPLETE output before writing ---
+# --- Format and write output ---
 try:
-    result = subprocess.run(
-        [sys.executable, FORMAT_SCRIPT, model, str(pct), str(tokens_used)],
-        capture_output=True,
-        timeout=2,
-    )
-    output = result.stdout
+    output = format_statusline(model, pct, tokens_used)
     if not output:
         raise ValueError("empty output")
 except Exception:
