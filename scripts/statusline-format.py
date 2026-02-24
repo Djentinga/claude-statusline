@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Formatter for Claude Code statusline. Can be called standalone or imported."""
-import sys, json, os, time
+import sys, json, os, time, subprocess
 from datetime import datetime
 
 R   = "\x1b[0m"
@@ -117,6 +117,25 @@ def format_tokens(tokens_used):
     return str(tokens_used // 1000) + "k"
 
 
+def get_git_info():
+    """Return 'repo:branch' string or empty string if not in a git repo."""
+    try:
+        branch = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            capture_output=True, text=True, timeout=1,
+        )
+        if branch.returncode != 0:
+            return ""
+        toplevel = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            capture_output=True, text=True, timeout=1,
+        )
+        repo = os.path.basename(toplevel.stdout.strip()) if toplevel.returncode == 0 else "?"
+        return repo + ":" + branch.stdout.strip()
+    except Exception:
+        return ""
+
+
 def format_statusline(model, pct, tokens_used):
     """Build the full statusline. Returns UTF-8 bytes."""
     # --- Cache ---
@@ -127,8 +146,11 @@ def format_statusline(model, pct, tokens_used):
     except Exception:
         pass
 
-    rider_running = cache.get("rider_running", False) if cache else False
-    rider = (GRN + "⌨ Connected" + R) if rider_running else "⌨ Disconnected"
+    rider_up = cache.get("rider_running", False) if cache else False
+    serena_up = cache.get("serena_running", False) if cache else False
+    rider = (GRN if rider_up else DIM) + "🖧 Rider" + R
+    serena = (GRN if serena_up else DIM) + "🖧 Serena" + R
+    services = rider + " " + serena
     usage = cache.get("usage") if cache else None
 
     # Stale cache indicator
@@ -139,14 +161,24 @@ def format_statusline(model, pct, tokens_used):
     ctx_pct = min(round(tokens_used / COMPACT_AT * 100), 100)
     clr = ctx_color(ctx_pct)
 
-    parts = [
-        CYN + "⚡ " + model + R,
+    # Line 1: model, git info, rider
+    line1_parts = [CYN + "⚡ " + model + R]
+    git = get_git_info()
+    if git:
+        line1_parts.append(CYN + " " + git + R)
+    line1_parts.append(services)
+    line1 = SEP.join(line1_parts)
+
+    # Line 2: context bar, usage bars
+    line2_parts = [
         "Ctx " + clr + bar(ctx_pct) + " " + format_tokens(tokens_used) + R,
         stale_prefix + format_usage(usage),
-        rider,
     ]
+    line2 = SEP.join(line2_parts)
 
-    return (SEP.join(parts) + R).encode("utf-8")
+    divider = DIM + "─" * 80 + R
+
+    return (line1 + R + "\n" + divider + "\n" + line2 + R + "\n" + divider).encode("utf-8")
 
 
 # --- Standalone entry point (backwards compat) ---

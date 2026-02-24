@@ -34,9 +34,9 @@ def claude_user_agent():
     return f"claude-code/{_claude_version}"
 
 
-def check_rider():
+def check_process(pattern):
     try:
-        subprocess.run(["pgrep", "-fi", "rider"], capture_output=True, check=True)
+        subprocess.run(["pgrep", "-fi", pattern], capture_output=True, check=True)
         return True
     except Exception:
         return False
@@ -73,7 +73,8 @@ def main():
     try:
         result = {
             "ts": time.time(),
-            "rider_running": check_rider(),
+            "rider_running": check_process("rider"),
+            "serena_running": check_process("serena start-mcp-server"),
             "usage": fetch_usage(),
         }
         # Atomic write: temp file + rename prevents partial reads
