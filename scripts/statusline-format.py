@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Formatter for Claude Code statusline. Can be called standalone or imported."""
-import sys, json, os, time, subprocess
+import sys, json, os, time, subprocess, math
 from datetime import datetime
 
 R   = "\x1b[0m"
@@ -40,11 +40,15 @@ def ctx_color(val):
     return BRD
 
 
-def calc_expected(resets_at_str, window_secs):
+def calc_expected(resets_at_str, window_secs, daily=False):
     try:
         resets_at = datetime.fromisoformat(resets_at_str)
         now = datetime.now(resets_at.tzinfo)
         elapsed = window_secs - (resets_at - now).total_seconds()
+        if daily:
+            days_elapsed = math.ceil(max(0, elapsed) / 86400)
+            total_days = round(window_secs / 86400)
+            return max(0, min(days_elapsed / total_days * 100, 100))
         return max(0, min(elapsed / window_secs * 100, 100))
     except Exception:
         return None
@@ -81,7 +85,7 @@ def format_usage(usage):
     h5_resets = h5_data.get("resets_at")
     d7_resets = d7_data.get("resets_at")
     h5_exp = calc_expected(h5_resets, WINDOW_5H)
-    d7_exp = calc_expected(d7_resets, WINDOW_7D)
+    d7_exp = calc_expected(d7_resets, WINDOW_7D, daily=True)
     # 5-hour
     if h5 is not None:
         h5v = int(float(h5))
