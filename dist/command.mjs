@@ -1,4 +1,4 @@
-import{createRequire}from'module';const require=createRequire(import.meta.url);
+process.env.FORCE_COLOR='1';import{createRequire}from'module';const require=createRequire(import.meta.url);
 
 // src/command.ts
 import fs2 from "node:fs";

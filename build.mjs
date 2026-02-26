@@ -5,7 +5,7 @@ const shared = {
   platform: "node",
   target: "node20",
   format: "esm",
-  banner: { js: "import{createRequire}from'module';const require=createRequire(import.meta.url);" },
+  banner: { js: "process.env.FORCE_COLOR='1';import{createRequire}from'module';const require=createRequire(import.meta.url);" },
 };
 
 await Promise.all([
