@@ -1,5 +1,4 @@
-import React from "react";
-import { Text } from "ink";
+import chalk from "chalk";
 import { BAR_W } from "../lib/format.js";
 
 type Color = "green" | "yellow" | "red" | "redBright";
@@ -25,14 +24,7 @@ export function budgetColor(actual: number, expected: number | null): Color {
   return "redBright";
 }
 
-interface BarProps {
-  value: number;
-  color: Color;
-  cutoff?: number | null;
-  width?: number;
-}
-
-export function Bar({ value, color, cutoff, width = BAR_W }: BarProps) {
+export function bar(value: number, color: Color, cutoff?: number | null, width = BAR_W): string {
   const clamped = Math.max(0, Math.min(value, 100));
   const filled = Math.round((clamped * width) / 100);
   const mpos =
@@ -51,5 +43,5 @@ export function Bar({ value, color, cutoff, width = BAR_W }: BarProps) {
     }
   }
 
-  return <Text color={color}>{chars.join("")}</Text>;
+  return chalk[color](chars.join(""));
 }

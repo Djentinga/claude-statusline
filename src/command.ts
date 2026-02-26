@@ -1,12 +1,10 @@
-import React from "react";
-import { render } from "ink";
 import fs from "node:fs";
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { StdinData } from "./lib/types.js";
 import { readCache, isCacheStale } from "./lib/cache.js";
-import { StatusLine } from "./components/StatusLine.js";
+import { formatStatusLine } from "./components/StatusLine.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -35,7 +33,12 @@ if (isCacheStale(cache)) {
   } catch {}
 }
 
-// Render and exit
-const { waitUntilExit } = render(<StatusLine model={model} tokensUsed={tokensUsed} cache={cache} />);
-await waitUntilExit();
+// Format and write output atomically
+try {
+  const output = formatStatusLine(model, tokensUsed, cache);
+  fs.writeFileSync(1, output);
+} catch {
+  fs.writeFileSync(1, `${model} | ?`);
+}
+
 process.exit(0);
