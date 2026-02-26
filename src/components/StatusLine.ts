@@ -15,7 +15,7 @@ export function formatStatusLine(model: string, tokensUsed: number, cache: Cache
   const riderUp = cache?.rider_running ?? false;
   const serenaUp = cache?.serena_running ?? false;
   const stale = isCacheVeryStale(cache);
-  const termWidth = process.stdout.columns ?? 80;
+  const DIVIDER_W = 80;
 
   // Line 1: Model, Git, Services
   const line1Parts = [chalk.cyan.bold(`⚡ ${model}`)];
@@ -25,7 +25,7 @@ export function formatStatusLine(model: string, tokensUsed: number, cache: Cache
   const line1 = line1Parts.join(SEP);
 
   // Divider
-  const divider = chalk.dim("─".repeat(termWidth));
+  const divider = chalk.dim("─".repeat(DIVIDER_W));
 
   // Line 2: Context bar, Usage bars
   const ctxC = ctxColor(ctxPct);

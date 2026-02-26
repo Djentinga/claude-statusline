@@ -668,13 +668,13 @@ function formatStatusLine(model2, tokensUsed2, cache2) {
   const riderUp = cache2?.rider_running ?? false;
   const serenaUp = cache2?.serena_running ?? false;
   const stale = isCacheVeryStale(cache2);
-  const termWidth = process.stdout.columns ?? 80;
+  const DIVIDER_W = 80;
   const line1Parts = [source_default.cyan.bold(`\u26A1 ${model2}`)];
   if (git) line1Parts.push(source_default.cyan(` ${git}`));
   line1Parts.push(serviceBadge("Rider", riderUp));
   line1Parts.push(serviceBadge("Serena", serenaUp));
   const line1 = line1Parts.join(SEP2);
-  const divider = source_default.dim("\u2500".repeat(termWidth));
+  const divider = source_default.dim("\u2500".repeat(DIVIDER_W));
   const ctxC = ctxColor(ctxPct2);
   const line2 = `Ctx ${bar(ctxPct2, ctxC)} ${formatTokens(tokensUsed2)}${SEP2}${usageDisplay(cache2?.usage, stale)}`;
   return `${line1}
