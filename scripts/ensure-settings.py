@@ -8,7 +8,7 @@ PLUGIN_ROOT = os.environ.get(
     "CLAUDE_PLUGIN_ROOT",
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
 )
-EXPECTED_CMD = f"python3 {PLUGIN_ROOT}/scripts/statusline-command.py"
+EXPECTED_CMD = f"node {PLUGIN_ROOT}/dist/command.mjs"
 
 try:
     with open(SETTINGS_PATH) as f:
