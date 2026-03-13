@@ -31,7 +31,7 @@ StatusLine          — main layout (Box flexDirection="column")
 
 ### Context bar rescaling
 
-The context bar does NOT use the raw `used_percentage` from stdin. It rescales: `ctx_pct = tokens_used / COMPACT_AT * 100`, so 100% on the bar = the auto-compact threshold (166k tokens), not the full context window.
+The context bar does NOT use the raw `used_percentage` from stdin. It rescales: `ctx_pct = tokens_used / COMPACT_AT * 100`, so 100% on the bar = the auto-compact threshold (967k tokens), not the full context window.
 
 ### 7-day expected usage
 
@@ -39,7 +39,7 @@ Uses daily granularity (`Math.ceil(elapsed / 86400)` days), not continuous time.
 
 ## Key constants (in `src/lib/format.ts`)
 
-- `COMPACT_AT = 166_000` — auto-compact token threshold (100% on context bar)
+- `COMPACT_AT = 967_000` — auto-compact token threshold (100% on context bar)
 - `BAR_W = 8` — bar width in characters
 - `CACHE_TTL = 120` — seconds before triggering background refresh
 - `STALE_THRESHOLD = 240` — seconds before showing stale indicator (`~`)
