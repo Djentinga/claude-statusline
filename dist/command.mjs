@@ -525,7 +525,7 @@ var chalkStderr = createChalk({ level: stderrColor ? stderrColor.level : 0 });
 var source_default = chalk;
 
 // src/lib/format.ts
-var COMPACT_AT = 166e3;
+var COMPACT_AT = 967e3;
 var BAR_W = 8;
 function formatTokens(tokens) {
   if (tokens < 1e3) return String(tokens);
