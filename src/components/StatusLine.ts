@@ -4,24 +4,20 @@ import { COMPACT_AT, formatTokens } from "../lib/format.js";
 import { isCacheVeryStale } from "../lib/cache.js";
 import { getGitInfo } from "../lib/git.js";
 import { bar, ctxColor } from "./Bar.js";
-import { serviceBadge } from "./ServiceBadge.js";
 import { usageDisplay } from "./UsageDisplay.js";
 
 const SEP = chalk.dim(" │ ");
 
-export function formatStatusLine(model: string, tokensUsed: number, cache: CacheData | null): string {
+export function formatStatusLine(model: string, tokensUsed: number, cache: CacheData | null, hitRate: number | null = null): string {
   const ctxPct = Math.min(Math.round((tokensUsed / COMPACT_AT) * 100), 100);
   const git = getGitInfo();
-  const riderUp = cache?.rider_running ?? false;
-  const serenaUp = cache?.serena_running ?? false;
   const stale = isCacheVeryStale(cache);
   const DIVIDER_W = 80;
 
-  // Line 1: Model, Git, Services
+  // Line 1: Model, Git, Cache hit-rate
   const line1Parts = [chalk.cyan.bold(`⚡ ${model}`)];
   if (git) line1Parts.push(chalk.cyan(` ${git}`));
-  line1Parts.push(serviceBadge("Rider", riderUp));
-  line1Parts.push(serviceBadge("Serena", serenaUp));
+  if (hitRate !== null) line1Parts.push(chalk.dim(`Cache hit-rate: ${hitRate}%`));
   const line1 = line1Parts.join(SEP);
 
   // Divider

@@ -22,3 +22,9 @@ export interface CacheData {
   serena_running: boolean;
   usage?: UsageData;
 }
+
+export interface HitRateData {
+  hits: number;
+  total: number;
+  last_ts: number;
+}

@@ -11,8 +11,10 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 var CACHE_PATH = path.join(os.homedir(), ".claude", ".statusline-cache.json");
+var HITRATE_PATH = path.join(os.homedir(), ".claude", ".statusline-hitrate.json");
 var CACHE_TTL = 120;
 var STALE_THRESHOLD = 2 * CACHE_TTL;
+var SESSION_GAP = 600;
 function readCache() {
   try {
     return JSON.parse(fs.readFileSync(CACHE_PATH, "utf-8"));
@@ -27,6 +29,34 @@ function isCacheStale(cache2) {
 function isCacheVeryStale(cache2) {
   if (!cache2?.ts) return true;
   return Date.now() / 1e3 - cache2.ts > STALE_THRESHOLD;
+}
+function recordCacheHit(hit) {
+  const now = Date.now() / 1e3;
+  let data2 = { hits: 0, total: 0, last_ts: now };
+  try {
+    const raw = JSON.parse(fs.readFileSync(HITRATE_PATH, "utf-8"));
+    if (now - raw.last_ts < SESSION_GAP) {
+      data2 = raw;
+    }
+  } catch {
+  }
+  data2.total++;
+  if (hit) data2.hits++;
+  data2.last_ts = now;
+  try {
+    fs.writeFileSync(HITRATE_PATH, JSON.stringify(data2));
+  } catch {
+  }
+}
+function readHitRate() {
+  try {
+    const data2 = JSON.parse(fs.readFileSync(HITRATE_PATH, "utf-8"));
+    if (Date.now() / 1e3 - data2.last_ts > SESSION_GAP) return null;
+    if (data2.total === 0) return null;
+    return Math.round(data2.hits / data2.total * 100);
+  } catch {
+    return null;
+  }
 }
 
 // node_modules/chalk/source/vendor/ansi-styles/index.js
@@ -616,17 +646,12 @@ function bar(value, color, cutoff, width = BAR_W) {
   return source_default[color](chars.join(""));
 }
 
-// src/components/ServiceBadge.ts
-function serviceBadge(name, up) {
-  return up ? source_default.green(`\u25A3 ${name}`) : source_default.dim(`\u25A3 ${name}`);
-}
-
 // src/components/UsageDisplay.ts
 var WINDOW_5H = 5 * 3600;
 var WINDOW_7D = 7 * 24 * 3600;
 var SEP = source_default.dim(" \u2502 ");
-function usageDisplay(usage, stale) {
-  const stalePrefix = stale ? source_default.dim("~") : "";
+function usageDisplay(usage, stale2) {
+  const stalePrefix = stale2 ? source_default.dim("~") : "";
   if (!usage) {
     return `${stalePrefix}\u{1F550} ?${SEP}\u{1F4C5} ?`;
   }
@@ -662,21 +687,18 @@ function usageDisplay(usage, stale) {
 
 // src/components/StatusLine.ts
 var SEP2 = source_default.dim(" \u2502 ");
-function formatStatusLine(model2, tokensUsed2, cache2) {
+function formatStatusLine(model2, tokensUsed2, cache2, hitRate2 = null) {
   const ctxPct2 = Math.min(Math.round(tokensUsed2 / COMPACT_AT * 100), 100);
   const git = getGitInfo();
-  const riderUp = cache2?.rider_running ?? false;
-  const serenaUp = cache2?.serena_running ?? false;
-  const stale = isCacheVeryStale(cache2);
+  const stale2 = isCacheVeryStale(cache2);
   const DIVIDER_W = 80;
   const line1Parts = [source_default.cyan.bold(`\u26A1 ${model2}`)];
   if (git) line1Parts.push(source_default.cyan(` ${git}`));
-  line1Parts.push(serviceBadge("Rider", riderUp));
-  line1Parts.push(serviceBadge("Serena", serenaUp));
+  if (hitRate2 !== null) line1Parts.push(source_default.dim(`Cache hit-rate: ${hitRate2}%`));
   const line1 = line1Parts.join(SEP2);
   const divider = source_default.dim("\u2500".repeat(DIVIDER_W));
   const ctxC = ctxColor(ctxPct2);
-  const line2 = `Ctx ${bar(ctxPct2, ctxC)} ${formatTokens(tokensUsed2)}${SEP2}${usageDisplay(cache2?.usage, stale)}`;
+  const line2 = `Ctx ${bar(ctxPct2, ctxC)} ${formatTokens(tokensUsed2)}${SEP2}${usageDisplay(cache2?.usage, stale2)}`;
   return `${line1}
 ${divider}
 ${line2}
@@ -696,7 +718,9 @@ var ctxPct = Math.floor(Number(data.context_window?.used_percentage) || 0);
 var ctxSize = Math.floor(Number(data.context_window?.context_window_size) || 2e5);
 var tokensUsed = Math.floor(ctxSize * ctxPct / 100);
 var cache = readCache();
-if (isCacheStale(cache)) {
+var stale = isCacheStale(cache);
+recordCacheHit(!stale);
+if (stale) {
   try {
     const collector = path3.join(__dirname, "collector.mjs");
     const child = spawn(process.execPath, [collector], {
@@ -707,8 +731,9 @@ if (isCacheStale(cache)) {
   } catch {
   }
 }
+var hitRate = readHitRate();
 try {
-  const output = formatStatusLine(model, tokensUsed, cache);
+  const output = formatStatusLine(model, tokensUsed, cache, hitRate);
   fs2.writeFileSync(1, output);
 } catch {
   fs2.writeFileSync(1, `${model} | ?`);
