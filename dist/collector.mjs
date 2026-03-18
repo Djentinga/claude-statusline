@@ -65,15 +65,30 @@ async function fetchUsage() {
     return null;
   }
 }
+var IMPACT_RANK = { critical: 3, major: 2, minor: 1, none: 0 };
+async function fetchIncident() {
+  try {
+    const resp = await fetch("https://status.claude.com/api/v2/incidents/unresolved.json", {
+      signal: AbortSignal.timeout(3e3)
+    });
+    const data = await resp.json();
+    if (!data.incidents?.length) return null;
+    return data.incidents.sort((a, b) => (IMPACT_RANK[b.impact] ?? 0) - (IMPACT_RANK[a.impact] ?? 0))[0];
+  } catch {
+    return null;
+  }
+}
 async function main() {
   const lockFd = acquireLock();
   if (lockFd === null) process.exit(0);
   try {
+    const [usage, incident] = await Promise.all([fetchUsage(), fetchIncident()]);
     const result = {
       ts: Date.now() / 1e3,
       rider_running: checkProcess("rider"),
       serena_running: checkProcess("serena start-mcp-server"),
-      usage: await fetchUsage()
+      usage,
+      incident
     };
     const dir = path.dirname(CACHE_PATH);
     const tmp = path.join(dir, `.statusline-cache-${process.pid}.tmp`);

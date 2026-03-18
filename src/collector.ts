@@ -72,16 +72,34 @@ async function fetchUsage(): Promise<unknown | null> {
   }
 }
 
+const IMPACT_RANK: Record<string, number> = { critical: 3, major: 2, minor: 1, none: 0 };
+
+async function fetchIncident(): Promise<{ name: string; status: string; impact: string } | null> {
+  try {
+    const resp = await fetch("https://status.claude.com/api/v2/incidents/unresolved.json", {
+      signal: AbortSignal.timeout(3000),
+    });
+    const data = (await resp.json()) as { incidents: Array<{ name: string; status: string; impact: string }> };
+    if (!data.incidents?.length) return null;
+    // Return highest-impact incident
+    return data.incidents.sort((a, b) => (IMPACT_RANK[b.impact] ?? 0) - (IMPACT_RANK[a.impact] ?? 0))[0];
+  } catch {
+    return null;
+  }
+}
+
 async function main() {
   const lockFd = acquireLock();
   if (lockFd === null) process.exit(0);
 
   try {
+    const [usage, incident] = await Promise.all([fetchUsage(), fetchIncident()]);
     const result = {
       ts: Date.now() / 1000,
       rider_running: checkProcess("rider"),
       serena_running: checkProcess("serena start-mcp-server"),
-      usage: await fetchUsage(),
+      usage,
+      incident,
     };
 
     // Atomic write: temp file + rename

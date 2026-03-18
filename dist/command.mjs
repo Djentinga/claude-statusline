@@ -687,6 +687,20 @@ function usageDisplay(usage, stale2) {
 
 // src/components/StatusLine.ts
 var SEP2 = source_default.dim(" \u2502 ");
+function statusIcon(incident) {
+  if (!incident) return source_default.green("\u25CF");
+  const label = `\u25CF ${incident.status}: ${incident.name}`;
+  switch (incident.impact) {
+    case "critical":
+      return source_default.red(label);
+    case "major":
+      return source_default.hex("#FFA500")(label);
+    case "minor":
+      return source_default.yellow(label);
+    default:
+      return source_default.dim(label);
+  }
+}
 function formatStatusLine(model2, tokensUsed2, cache2, hitRate2 = null) {
   const ctxPct2 = Math.min(Math.round(tokensUsed2 / COMPACT_AT * 100), 100);
   const git = getGitInfo();
@@ -694,6 +708,7 @@ function formatStatusLine(model2, tokensUsed2, cache2, hitRate2 = null) {
   const DIVIDER_W = 80;
   const line1Parts = [source_default.cyan.bold(`\u26A1 ${model2}`)];
   if (git) line1Parts.push(source_default.cyan(` ${git}`));
+  line1Parts.push(statusIcon(cache2?.incident));
   if (hitRate2 !== null) line1Parts.push(source_default.dim(`Cache hit-rate: ${hitRate2}%`));
   const line1 = line1Parts.join(SEP2);
   const divider = source_default.dim("\u2500".repeat(DIVIDER_W));

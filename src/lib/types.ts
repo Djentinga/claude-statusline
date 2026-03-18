@@ -16,11 +16,18 @@ export interface UsageData {
   seven_day?: UsageWindow;
 }
 
+export interface IncidentInfo {
+  name: string;
+  status: string;   // investigating, identified, monitoring
+  impact: string;   // none, minor, major, critical
+}
+
 export interface CacheData {
   ts: number;
   rider_running: boolean;
   serena_running: boolean;
   usage?: UsageData;
+  incident?: IncidentInfo | null;
 }
 
 export interface HitRateData {
