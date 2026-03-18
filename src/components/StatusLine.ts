@@ -9,8 +9,8 @@ import { usageDisplay } from "./UsageDisplay.js";
 const SEP = chalk.dim(" │ ");
 
 function statusIcon(incident: IncidentInfo | null | undefined): string {
-  if (!incident) return chalk.green("●");
-  const label = `● ${incident.status}: ${incident.name}`;
+  if (!incident) return chalk.green("▣ Status");
+  const label = `▣ ${incident.status}: ${incident.name}`;
   switch (incident.impact) {
     case "critical": return chalk.red(label);
     case "major": return chalk.hex("#FFA500")(label);

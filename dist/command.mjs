@@ -688,8 +688,8 @@ function usageDisplay(usage, stale2) {
 // src/components/StatusLine.ts
 var SEP2 = source_default.dim(" \u2502 ");
 function statusIcon(incident) {
-  if (!incident) return source_default.green("\u25CF");
-  const label = `\u25CF ${incident.status}: ${incident.name}`;
+  if (!incident) return source_default.green("\u25A3 Status");
+  const label = `\u25A3 ${incident.status}: ${incident.name}`;
   switch (incident.impact) {
     case "critical":
       return source_default.red(label);
