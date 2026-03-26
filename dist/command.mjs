@@ -708,16 +708,17 @@ function formatStatusLine(model2, tokensUsed2, cache2, hitRate2 = null) {
   const DIVIDER_W = 80;
   const line1Parts = [source_default.cyan.bold(`\u26A1 ${model2}`)];
   if (git) line1Parts.push(source_default.cyan(` ${git}`));
-  line1Parts.push(statusIcon(cache2?.incident));
   if (hitRate2 !== null) line1Parts.push(source_default.dim(`Cache hit-rate: ${hitRate2}%`));
   const line1 = line1Parts.join(SEP2);
   const divider = source_default.dim("\u2500".repeat(DIVIDER_W));
   const ctxC = ctxColor(ctxPct2);
   const line2 = `Ctx ${bar(ctxPct2, ctxC)} ${formatTokens(tokensUsed2)}${SEP2}${usageDisplay(cache2?.usage, stale2)}`;
+  const line3 = statusIcon(cache2?.incident);
   return `${line1}
 ${divider}
 ${line2}
-${divider}`;
+${divider}
+${line3}`;
 }
 
 // src/command.ts

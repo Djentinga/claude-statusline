@@ -25,10 +25,9 @@ export function formatStatusLine(model: string, tokensUsed: number, cache: Cache
   const stale = isCacheVeryStale(cache);
   const DIVIDER_W = 80;
 
-  // Line 1: Model, Git, Status, Cache hit-rate
+  // Line 1: Model, Git, Cache hit-rate
   const line1Parts = [chalk.cyan.bold(`⚡ ${model}`)];
   if (git) line1Parts.push(chalk.cyan(` ${git}`));
-  line1Parts.push(statusIcon(cache?.incident));
   if (hitRate !== null) line1Parts.push(chalk.dim(`Cache hit-rate: ${hitRate}%`));
   const line1 = line1Parts.join(SEP);
 
@@ -39,5 +38,8 @@ export function formatStatusLine(model: string, tokensUsed: number, cache: Cache
   const ctxC = ctxColor(ctxPct);
   const line2 = `Ctx ${bar(ctxPct, ctxC)} ${formatTokens(tokensUsed)}${SEP}${usageDisplay(cache?.usage, stale)}`;
 
-  return `${line1}\n${divider}\n${line2}\n${divider}`;
+  // Line 3: Claude status
+  const line3 = statusIcon(cache?.incident);
+
+  return `${line1}\n${divider}\n${line2}\n${divider}\n${line3}`;
 }
