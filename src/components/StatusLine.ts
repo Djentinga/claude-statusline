@@ -27,7 +27,7 @@ export function formatStatusLine(model: string, tokensUsed: number, cache: Cache
 
   // Line 1: Model, Git, Cache hit-rate
   const line1Parts = [chalk.cyan.bold(`⚡ ${model}`)];
-  if (git) line1Parts.push(chalk.cyan(` ${git}`));
+  if (git) line1Parts.push(chalk.cyan(git));
   if (hitRate !== null) line1Parts.push(chalk.dim(`Cache hit-rate: ${hitRate}%`));
   const line1 = line1Parts.join(SEP);
 

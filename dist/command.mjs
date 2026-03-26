@@ -707,7 +707,7 @@ function formatStatusLine(model2, tokensUsed2, cache2, hitRate2 = null) {
   const stale2 = isCacheVeryStale(cache2);
   const DIVIDER_W = 80;
   const line1Parts = [source_default.cyan.bold(`\u26A1 ${model2}`)];
-  if (git) line1Parts.push(source_default.cyan(` ${git}`));
+  if (git) line1Parts.push(source_default.cyan(git));
   if (hitRate2 !== null) line1Parts.push(source_default.dim(`Cache hit-rate: ${hitRate2}%`));
   const line1 = line1Parts.join(SEP2);
   const divider = source_default.dim("\u2500".repeat(DIVIDER_W));
