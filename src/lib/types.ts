@@ -30,8 +30,3 @@ export interface CacheData {
   incident?: IncidentInfo | null;
 }
 
-export interface HitRateData {
-  hits: number;
-  total: number;
-  last_ts: number;
-}

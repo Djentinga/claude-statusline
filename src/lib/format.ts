@@ -27,6 +27,20 @@ export function calcExpected(
   }
 }
 
+// Input rates per 1M tokens ($)
+const MODEL_RATES: Record<string, number> = { opus: 15, sonnet: 3, haiku: 0.8 };
+
+export function estimateCost(model: string, tokens: number): string {
+  const key = model.toLowerCase();
+  let rate = 3; // default sonnet
+  for (const [name, r] of Object.entries(MODEL_RATES)) {
+    if (key.includes(name)) { rate = r; break; }
+  }
+  const cost = (tokens / 1_000_000) * rate;
+  if (cost < 0.01) return "<$0.01";
+  return `~$${cost.toFixed(2)}`;
+}
+
 export function resetTimeLocal(resetsAt: string | undefined): string {
   if (!resetsAt) return "";
   try {

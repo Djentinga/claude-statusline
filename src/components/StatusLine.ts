@@ -1,6 +1,6 @@
 import chalk from "chalk";
 import type { CacheData, IncidentInfo } from "../lib/types.js";
-import { COMPACT_AT, formatTokens } from "../lib/format.js";
+import { COMPACT_AT, formatTokens, estimateCost } from "../lib/format.js";
 import { isCacheVeryStale } from "../lib/cache.js";
 import { getGitInfo } from "../lib/git.js";
 import { bar, ctxColor } from "./Bar.js";
@@ -19,16 +19,17 @@ function statusIcon(incident: IncidentInfo | null | undefined): string {
   }
 }
 
-export function formatStatusLine(model: string, tokensUsed: number, cache: CacheData | null, hitRate: number | null = null): string {
+export function formatStatusLine(model: string, tokensUsed: number, cache: CacheData | null): string {
   const ctxPct = Math.min(Math.round((tokensUsed / COMPACT_AT) * 100), 100);
   const git = getGitInfo();
   const stale = isCacheVeryStale(cache);
   const DIVIDER_W = 80;
 
-  // Line 1: Model, Git, Cache hit-rate
+  // Line 1: Model, Git, Session tokens, Cost
   const line1Parts = [chalk.cyan.bold(`⚡ ${model}`)];
   if (git) line1Parts.push(chalk.cyan(git));
-  if (hitRate !== null) line1Parts.push(chalk.dim(`Cache hit-rate: ${hitRate}%`));
+  line1Parts.push(chalk.dim(`Σ ${formatTokens(tokensUsed)}`));
+  line1Parts.push(chalk.dim(estimateCost(model, tokensUsed)));
   const line1 = line1Parts.join(SEP);
 
   // Divider

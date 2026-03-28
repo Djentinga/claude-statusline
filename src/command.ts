@@ -3,7 +3,7 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { StdinData } from "./lib/types.js";
-import { readCache, isCacheStale, recordCacheHit, readHitRate } from "./lib/cache.js";
+import { readCache, isCacheStale } from "./lib/cache.js";
 import { formatStatusLine } from "./components/StatusLine.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -23,7 +23,6 @@ const tokensUsed = Math.floor((ctxSize * ctxPct) / 100);
 // Read cache, spawn collector if stale
 const cache = readCache();
 const stale = isCacheStale(cache);
-recordCacheHit(!stale);
 if (stale) {
   try {
     const collector = path.join(__dirname, "collector.mjs");
@@ -35,11 +34,9 @@ if (stale) {
   } catch {}
 }
 
-const hitRate = readHitRate();
-
 // Format and write output atomically
 try {
-  const output = formatStatusLine(model, tokensUsed, cache, hitRate);
+  const output = formatStatusLine(model, tokensUsed, cache);
   fs.writeFileSync(1, output);
 } catch {
   fs.writeFileSync(1, `${model} | ?`);

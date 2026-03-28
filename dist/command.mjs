@@ -11,10 +11,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 var CACHE_PATH = path.join(os.homedir(), ".claude", ".statusline-cache.json");
-var HITRATE_PATH = path.join(os.homedir(), ".claude", ".statusline-hitrate.json");
 var CACHE_TTL = 120;
 var STALE_THRESHOLD = 2 * CACHE_TTL;
-var SESSION_GAP = 600;
 function readCache() {
   try {
     return JSON.parse(fs.readFileSync(CACHE_PATH, "utf-8"));
@@ -29,34 +27,6 @@ function isCacheStale(cache2) {
 function isCacheVeryStale(cache2) {
   if (!cache2?.ts) return true;
   return Date.now() / 1e3 - cache2.ts > STALE_THRESHOLD;
-}
-function recordCacheHit(hit) {
-  const now = Date.now() / 1e3;
-  let data2 = { hits: 0, total: 0, last_ts: now };
-  try {
-    const raw = JSON.parse(fs.readFileSync(HITRATE_PATH, "utf-8"));
-    if (now - raw.last_ts < SESSION_GAP) {
-      data2 = raw;
-    }
-  } catch {
-  }
-  data2.total++;
-  if (hit) data2.hits++;
-  data2.last_ts = now;
-  try {
-    fs.writeFileSync(HITRATE_PATH, JSON.stringify(data2));
-  } catch {
-  }
-}
-function readHitRate() {
-  try {
-    const data2 = JSON.parse(fs.readFileSync(HITRATE_PATH, "utf-8"));
-    if (Date.now() / 1e3 - data2.last_ts > SESSION_GAP) return null;
-    if (data2.total === 0) return null;
-    return Math.round(data2.hits / data2.total * 100);
-  } catch {
-    return null;
-  }
 }
 
 // node_modules/chalk/source/vendor/ansi-styles/index.js
@@ -577,6 +547,20 @@ function calcExpected(resetsAt, windowSecs, daily = false) {
     return null;
   }
 }
+var MODEL_RATES = { opus: 15, sonnet: 3, haiku: 0.8 };
+function estimateCost(model2, tokens) {
+  const key = model2.toLowerCase();
+  let rate = 3;
+  for (const [name, r] of Object.entries(MODEL_RATES)) {
+    if (key.includes(name)) {
+      rate = r;
+      break;
+    }
+  }
+  const cost = tokens / 1e6 * rate;
+  if (cost < 0.01) return "<$0.01";
+  return `~$${cost.toFixed(2)}`;
+}
 function resetTimeLocal(resetsAt) {
   if (!resetsAt) return "";
   try {
@@ -701,14 +685,15 @@ function statusIcon(incident) {
       return source_default.dim(label);
   }
 }
-function formatStatusLine(model2, tokensUsed2, cache2, hitRate2 = null) {
+function formatStatusLine(model2, tokensUsed2, cache2) {
   const ctxPct2 = Math.min(Math.round(tokensUsed2 / COMPACT_AT * 100), 100);
   const git = getGitInfo();
   const stale2 = isCacheVeryStale(cache2);
   const DIVIDER_W = 80;
   const line1Parts = [source_default.cyan.bold(`\u26A1 ${model2}`)];
   if (git) line1Parts.push(source_default.cyan(git));
-  if (hitRate2 !== null) line1Parts.push(source_default.dim(`Cache hit-rate: ${hitRate2}%`));
+  line1Parts.push(source_default.dim(`\u03A3 ${formatTokens(tokensUsed2)}`));
+  line1Parts.push(source_default.dim(estimateCost(model2, tokensUsed2)));
   const line1 = line1Parts.join(SEP2);
   const divider = source_default.dim("\u2500".repeat(DIVIDER_W));
   const ctxC = ctxColor(ctxPct2);
@@ -735,7 +720,6 @@ var ctxSize = Math.floor(Number(data.context_window?.context_window_size) || 2e5
 var tokensUsed = Math.floor(ctxSize * ctxPct / 100);
 var cache = readCache();
 var stale = isCacheStale(cache);
-recordCacheHit(!stale);
 if (stale) {
   try {
     const collector = path3.join(__dirname, "collector.mjs");
@@ -747,9 +731,8 @@ if (stale) {
   } catch {
   }
 }
-var hitRate = readHitRate();
 try {
-  const output = formatStatusLine(model, tokensUsed, cache, hitRate);
+  const output = formatStatusLine(model, tokensUsed, cache);
   fs2.writeFileSync(1, output);
 } catch {
   fs2.writeFileSync(1, `${model} | ?`);
