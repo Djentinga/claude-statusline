@@ -548,16 +548,18 @@ function calcExpected(resetsAt, windowSecs, daily = false) {
   }
 }
 var MODEL_RATES = { opus: 15, sonnet: 3, haiku: 0.8 };
+var CACHE_HIT_RATE = 0.75;
 function estimateCost(model2, tokens) {
   const key = model2.toLowerCase();
-  let rate = 3;
+  let base = 3;
   for (const [name, r] of Object.entries(MODEL_RATES)) {
     if (key.includes(name)) {
-      rate = r;
+      base = r;
       break;
     }
   }
-  const cost = tokens / 1e6 * rate;
+  const effective = base * (1 - CACHE_HIT_RATE) + base * 0.1 * CACHE_HIT_RATE;
+  const cost = tokens / 1e6 * effective;
   if (cost < 0.01) return "<$0.01";
   return `~$${cost.toFixed(2)}`;
 }
