@@ -559,9 +559,7 @@ function estimateCost(model2, tokens) {
     }
   }
   const effective = base * (1 - CACHE_HIT_RATE) + base * 0.1 * CACHE_HIT_RATE;
-  const cost = tokens / 1e6 * effective;
-  if (cost < 0.01) return "<$0.01";
-  return `~$${cost.toFixed(2)}`;
+  return tokens / 1e6 * effective;
 }
 function resetTimeLocal(resetsAt) {
   if (!resetsAt) return "";
@@ -692,10 +690,14 @@ function formatStatusLine(model2, tokensUsed2, cache2) {
   const git = getGitInfo();
   const stale2 = isCacheVeryStale(cache2);
   const DIVIDER_W = 80;
+  const sub = cache2?.subagent_usage;
+  const totalTokens = tokensUsed2 + (sub?.tokens ?? 0);
+  const totalCost = estimateCost(model2, tokensUsed2) + (sub?.cost ?? 0);
+  const costStr = totalCost < 0.01 ? "<$0.01" : `~$${totalCost.toFixed(2)}`;
   const line1Parts = [source_default.cyan.bold(`\u26A1 ${model2}`)];
   if (git) line1Parts.push(source_default.cyan(git));
-  line1Parts.push(source_default.dim(`\u03A3 ${formatTokens(tokensUsed2)}`));
-  line1Parts.push(source_default.dim(estimateCost(model2, tokensUsed2)));
+  line1Parts.push(source_default.dim(`\u03A3 ${formatTokens(totalTokens)}`));
+  line1Parts.push(source_default.dim(costStr));
   const line1 = line1Parts.join(SEP2);
   const divider = source_default.dim("\u2500".repeat(DIVIDER_W));
   const ctxC = ctxColor(ctxPct2);

@@ -26,10 +26,15 @@ export function formatStatusLine(model: string, tokensUsed: number, cache: Cache
   const DIVIDER_W = 80;
 
   // Line 1: Model, Git, Session tokens, Cost
+  const sub = cache?.subagent_usage;
+  const totalTokens = tokensUsed + (sub?.tokens ?? 0);
+  const totalCost = estimateCost(model, tokensUsed) + (sub?.cost ?? 0);
+  const costStr = totalCost < 0.01 ? "<$0.01" : `~$${totalCost.toFixed(2)}`;
+
   const line1Parts = [chalk.cyan.bold(`⚡ ${model}`)];
   if (git) line1Parts.push(chalk.cyan(git));
-  line1Parts.push(chalk.dim(`Σ ${formatTokens(tokensUsed)}`));
-  line1Parts.push(chalk.dim(estimateCost(model, tokensUsed)));
+  line1Parts.push(chalk.dim(`Σ ${formatTokens(totalTokens)}`));
+  line1Parts.push(chalk.dim(costStr));
   const line1 = line1Parts.join(SEP);
 
   // Divider

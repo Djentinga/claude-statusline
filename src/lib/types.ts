@@ -22,11 +22,17 @@ export interface IncidentInfo {
   impact: string;   // none, minor, major, critical
 }
 
+export interface SubagentUsage {
+  tokens: number;  // input + output
+  cost: number;    // estimated USD
+}
+
 export interface CacheData {
   ts: number;
   rider_running: boolean;
   serena_running: boolean;
   usage?: UsageData;
   incident?: IncidentInfo | null;
+  subagent_usage?: SubagentUsage;
 }
 

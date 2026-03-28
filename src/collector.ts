@@ -72,6 +72,68 @@ async function fetchUsage(): Promise<unknown | null> {
   }
 }
 
+// --- Sub-agent token scanning ---
+const MODEL_INPUT_RATES: Record<string, number> = { opus: 15, sonnet: 3, haiku: 0.8 };
+const OUTPUT_MULTIPLIER = 5; // output rate = input rate * 5 for all Claude models
+
+function getModelRate(model: string): number {
+  const key = model.toLowerCase();
+  for (const [name, rate] of Object.entries(MODEL_INPUT_RATES)) {
+    if (key.includes(name)) return rate;
+  }
+  return 3; // default sonnet
+}
+
+function scanSubagentUsage(): { tokens: number; cost: number } {
+  try {
+    const slug = process.cwd().replace(/\//g, "-");
+    const projectDir = path.join(os.homedir(), ".claude", "projects", slug);
+    if (!fs.existsSync(projectDir)) return { tokens: 0, cost: 0 };
+
+    // Find most recent session directory (skip memory/)
+    const entries = fs.readdirSync(projectDir, { withFileTypes: true })
+      .filter(d => d.isDirectory() && d.name !== "memory")
+      .map(d => ({ name: d.name, mtime: fs.statSync(path.join(projectDir, d.name)).mtimeMs }))
+      .sort((a, b) => b.mtime - a.mtime);
+
+    if (!entries.length) return { tokens: 0, cost: 0 };
+
+    const subagentsDir = path.join(projectDir, entries[0].name, "subagents");
+    if (!fs.existsSync(subagentsDir)) return { tokens: 0, cost: 0 };
+
+    let totalTokens = 0;
+    let totalCost = 0;
+
+    for (const file of fs.readdirSync(subagentsDir).filter(f => f.endsWith(".jsonl"))) {
+      const content = fs.readFileSync(path.join(subagentsDir, file), "utf-8");
+      for (const line of content.split("\n")) {
+        if (!line.trim()) continue;
+        try {
+          const obj = JSON.parse(line);
+          const u = obj.usage;
+          if (!u) continue;
+          const input = u.input_tokens || 0;
+          const output = u.output_tokens || 0;
+          const cacheRead = u.cache_read_input_tokens || 0;
+          const cacheCreation = u.cache_creation_input_tokens || 0;
+          const uncached = Math.max(0, input - cacheRead - cacheCreation);
+          const base = getModelRate(obj.model || "");
+
+          totalTokens += input + output;
+          totalCost += (uncached * base +
+            cacheRead * base * 0.1 +
+            cacheCreation * base * 1.25 +
+            output * base * OUTPUT_MULTIPLIER) / 1_000_000;
+        } catch {}
+      }
+    }
+
+    return { tokens: totalTokens, cost: totalCost };
+  } catch {
+    return { tokens: 0, cost: 0 };
+  }
+}
+
 const IMPACT_RANK: Record<string, number> = { critical: 3, major: 2, minor: 1, none: 0 };
 
 async function fetchIncident(): Promise<{ name: string; status: string; impact: string } | null> {
@@ -94,12 +156,14 @@ async function main() {
 
   try {
     const [usage, incident] = await Promise.all([fetchUsage(), fetchIncident()]);
+    const subagent_usage = scanSubagentUsage();
     const result = {
       ts: Date.now() / 1000,
       rider_running: checkProcess("rider"),
       serena_running: checkProcess("serena start-mcp-server"),
       usage,
       incident,
+      subagent_usage: subagent_usage.tokens > 0 ? subagent_usage : undefined,
     };
 
     // Atomic write: temp file + rename

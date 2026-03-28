@@ -31,16 +31,14 @@ export function calcExpected(
 const MODEL_RATES: Record<string, number> = { opus: 15, sonnet: 3, haiku: 0.8 };
 const CACHE_HIT_RATE = 0.75; // typical Claude Code session after initial turns
 
-export function estimateCost(model: string, tokens: number): string {
+export function estimateCost(model: string, tokens: number): number {
   const key = model.toLowerCase();
   let base = 3; // default sonnet
   for (const [name, r] of Object.entries(MODEL_RATES)) {
     if (key.includes(name)) { base = r; break; }
   }
   const effective = base * (1 - CACHE_HIT_RATE) + (base * 0.1) * CACHE_HIT_RATE;
-  const cost = (tokens / 1_000_000) * effective;
-  if (cost < 0.01) return "<$0.01";
-  return `~$${cost.toFixed(2)}`;
+  return (tokens / 1_000_000) * effective;
 }
 
 export function resetTimeLocal(resetsAt: string | undefined): string {
