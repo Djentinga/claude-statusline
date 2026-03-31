@@ -90,15 +90,15 @@ function scanSubagentUsage(): { tokens: number; cost: number } {
     const projectDir = path.join(os.homedir(), ".claude", "projects", slug);
     if (!fs.existsSync(projectDir)) return { tokens: 0, cost: 0 };
 
-    // Find most recent session directory (skip memory/)
-    const entries = fs.readdirSync(projectDir, { withFileTypes: true })
-      .filter(d => d.isDirectory() && d.name !== "memory")
-      .map(d => ({ name: d.name, mtime: fs.statSync(path.join(projectDir, d.name)).mtimeMs }))
+    // Find active session by most recently modified {uuid}.jsonl file
+    const sessionFiles = fs.readdirSync(projectDir)
+      .filter(f => f.endsWith(".jsonl"))
+      .map(f => ({ name: f.replace(".jsonl", ""), mtime: fs.statSync(path.join(projectDir, f)).mtimeMs }))
       .sort((a, b) => b.mtime - a.mtime);
 
-    if (!entries.length) return { tokens: 0, cost: 0 };
+    if (!sessionFiles.length) return { tokens: 0, cost: 0 };
 
-    const subagentsDir = path.join(projectDir, entries[0].name, "subagents");
+    const subagentsDir = path.join(projectDir, sessionFiles[0].name, "subagents");
     if (!fs.existsSync(subagentsDir)) return { tokens: 0, cost: 0 };
 
     let totalTokens = 0;
@@ -110,14 +110,15 @@ function scanSubagentUsage(): { tokens: number; cost: number } {
         if (!line.trim()) continue;
         try {
           const obj = JSON.parse(line);
-          const u = obj.usage;
+          const msg = obj.message;
+          const u = msg?.usage;
           if (!u) continue;
           const input = u.input_tokens || 0;
           const output = u.output_tokens || 0;
           const cacheRead = u.cache_read_input_tokens || 0;
           const cacheCreation = u.cache_creation_input_tokens || 0;
           const uncached = Math.max(0, input - cacheRead - cacheCreation);
-          const base = getModelRate(obj.model || "");
+          const base = getModelRate(msg.model || "");
 
           totalTokens += input + output;
           totalCost += (uncached * base +
