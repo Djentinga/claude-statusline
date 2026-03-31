@@ -74,14 +74,26 @@ function getModelRate(model) {
   }
   return 3;
 }
+function findActiveSession() {
+  const sessionsDir = path.join(os.homedir(), ".claude", "sessions");
+  try {
+    const sessions = fs.readdirSync(sessionsDir).filter((f) => f.endsWith(".json")).map((f) => ({ file: f, mtime: fs.statSync(path.join(sessionsDir, f)).mtimeMs })).sort((a, b) => b.mtime - a.mtime);
+    for (const s of sessions) {
+      const data = JSON.parse(fs.readFileSync(path.join(sessionsDir, s.file), "utf-8"));
+      if (data.cwd && data.sessionId) {
+        return { slug: data.cwd.replace(/\//g, "-"), sessionId: data.sessionId };
+      }
+    }
+  } catch {
+  }
+  return null;
+}
 function scanSubagentUsage() {
   try {
-    const slug = process.cwd().replace(/\//g, "-");
-    const projectDir = path.join(os.homedir(), ".claude", "projects", slug);
-    if (!fs.existsSync(projectDir)) return { tokens: 0, cost: 0 };
-    const sessionFiles = fs.readdirSync(projectDir).filter((f) => f.endsWith(".jsonl")).map((f) => ({ name: f.replace(".jsonl", ""), mtime: fs.statSync(path.join(projectDir, f)).mtimeMs })).sort((a, b) => b.mtime - a.mtime);
-    if (!sessionFiles.length) return { tokens: 0, cost: 0 };
-    const subagentsDir = path.join(projectDir, sessionFiles[0].name, "subagents");
+    const session = findActiveSession();
+    if (!session) return { tokens: 0, cost: 0 };
+    const projectDir = path.join(os.homedir(), ".claude", "projects", session.slug);
+    const subagentsDir = path.join(projectDir, session.sessionId, "subagents");
     if (!fs.existsSync(subagentsDir)) return { tokens: 0, cost: 0 };
     let totalTokens = 0;
     let totalCost = 0;
