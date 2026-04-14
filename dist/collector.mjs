@@ -99,6 +99,8 @@ function scanSubagentUsage() {
     let totalCost = 0;
     for (const file of fs.readdirSync(subagentsDir).filter((f) => f.endsWith(".jsonl"))) {
       const content = fs.readFileSync(path.join(subagentsDir, file), "utf-8");
+      let lastContextSize = 0;
+      let agentCost = 0;
       for (const line of content.split("\n")) {
         if (!line.trim()) continue;
         try {
@@ -110,13 +112,14 @@ function scanSubagentUsage() {
           const output = u.output_tokens || 0;
           const cacheRead = u.cache_read_input_tokens || 0;
           const cacheCreation = u.cache_creation_input_tokens || 0;
-          const uncached = Math.max(0, input - cacheRead - cacheCreation);
           const base = getModelRate(msg.model || "");
-          totalTokens += input + output;
-          totalCost += (uncached * base + cacheRead * base * 0.1 + cacheCreation * base * 1.25 + output * base * OUTPUT_MULTIPLIER) / 1e6;
+          lastContextSize = input + cacheRead + cacheCreation + output;
+          agentCost += (input * base + cacheRead * base * 0.1 + cacheCreation * base * 1.25 + output * base * OUTPUT_MULTIPLIER) / 1e6;
         } catch {
         }
       }
+      totalTokens += lastContextSize;
+      totalCost += agentCost;
     }
     return { tokens: totalTokens, cost: totalCost };
   } catch {

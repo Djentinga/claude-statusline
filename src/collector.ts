@@ -117,6 +117,9 @@ function scanSubagentUsage(): { tokens: number; cost: number } {
 
     for (const file of fs.readdirSync(subagentsDir).filter(f => f.endsWith(".jsonl"))) {
       const content = fs.readFileSync(path.join(subagentsDir, file), "utf-8");
+      let lastContextSize = 0;
+      let agentCost = 0;
+
       for (const line of content.split("\n")) {
         if (!line.trim()) continue;
         try {
@@ -128,16 +131,21 @@ function scanSubagentUsage(): { tokens: number; cost: number } {
           const output = u.output_tokens || 0;
           const cacheRead = u.cache_read_input_tokens || 0;
           const cacheCreation = u.cache_creation_input_tokens || 0;
-          const uncached = Math.max(0, input - cacheRead - cacheCreation);
           const base = getModelRate(msg.model || "");
 
-          totalTokens += input + output;
-          totalCost += (uncached * base +
+          // Context window = full input (uncached + cache read + cache creation) + output
+          lastContextSize = input + cacheRead + cacheCreation + output;
+
+          // Cost: input_tokens is already the non-cached portion (full rate)
+          agentCost += (input * base +
             cacheRead * base * 0.1 +
             cacheCreation * base * 1.25 +
             output * base * OUTPUT_MULTIPLIER) / 1_000_000;
         } catch {}
       }
+
+      totalTokens += lastContextSize;
+      totalCost += agentCost;
     }
 
     return { tokens: totalTokens, cost: totalCost };
