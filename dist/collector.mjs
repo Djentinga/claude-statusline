@@ -8,7 +8,6 @@ import { execSync } from "node:child_process";
 var CREDS_PATH = path.join(os.homedir(), ".claude", ".credentials.json");
 var CACHE_PATH = path.join(os.homedir(), ".claude", ".statusline-cache.json");
 var LOCK_PATH = path.join(os.homedir(), ".claude", ".statusline-data.lock");
-var DEBUG_PATH = path.join(os.homedir(), ".claude", ".statusline-debug.log");
 function acquireLock() {
   try {
     const fd = fs.openSync(LOCK_PATH, "w");
@@ -75,62 +74,35 @@ function getModelRate(model) {
   }
   return 3;
 }
-function debugLog(msg) {
-  try {
-    fs.appendFileSync(DEBUG_PATH, `${(/* @__PURE__ */ new Date()).toISOString()} ${msg}
-`);
-  } catch {
-  }
-}
-function findActiveSession() {
-  debugLog(`findActiveSession cwd=${process.cwd()}`);
+function findProjectSlug() {
   const sessionsDir = path.join(os.homedir(), ".claude", "sessions");
   try {
     const sessions = fs.readdirSync(sessionsDir).filter((f) => f.endsWith(".json")).map((f) => ({ file: f, mtime: fs.statSync(path.join(sessionsDir, f)).mtimeMs })).sort((a, b) => b.mtime - a.mtime);
-    debugLog(`session files: ${sessions.map((s) => s.file).join(", ")}`);
     for (const s of sessions) {
       const data = JSON.parse(fs.readFileSync(path.join(sessionsDir, s.file), "utf-8"));
-      if (data.cwd && data.sessionId) {
-        const slug = data.cwd.replace(/\//g, "-");
-        const subDir = path.join(os.homedir(), ".claude", "projects", slug, data.sessionId, "subagents");
-        debugLog(`primary: file=${s.file} cwd=${data.cwd} sid=${data.sessionId} subExists=${fs.existsSync(subDir)}`);
-        return { slug, sessionId: data.sessionId };
-      }
+      if (data.cwd) return data.cwd.replace(/\//g, "-");
     }
-  } catch (e) {
-    debugLog(`primary error: ${e}`);
+  } catch {
   }
-  try {
-    const slug = process.cwd().replace(/\//g, "-");
-    const projectDir = path.join(os.homedir(), ".claude", "projects", slug);
-    debugLog(`fallback: slug=${slug} projectDir=${projectDir} exists=${fs.existsSync(projectDir)}`);
-    if (!fs.existsSync(projectDir)) return null;
-    const sessionDirs = fs.readdirSync(projectDir).filter((d) => {
-      const full = path.join(projectDir, d);
-      return fs.statSync(full).isDirectory() && d !== "memory";
-    }).map((d) => ({ dir: d, mtime: fs.statSync(path.join(projectDir, d)).mtimeMs })).sort((a, b) => b.mtime - a.mtime);
-    debugLog(`fallback dirs: ${sessionDirs.map((s) => s.dir).join(", ")}`);
-    for (const s of sessionDirs) {
-      if (fs.existsSync(path.join(projectDir, s.dir, "subagents"))) {
-        debugLog(`fallback match: ${s.dir}`);
-        return { slug, sessionId: s.dir };
-      }
-    }
-  } catch (e) {
-    debugLog(`fallback error: ${e}`);
-  }
-  debugLog("no session found");
-  return null;
+  return process.cwd().replace(/\//g, "-");
+}
+function findSessionsWithSubagents(slug) {
+  const projectDir = path.join(os.homedir(), ".claude", "projects", slug);
+  if (!fs.existsSync(projectDir)) return [];
+  return fs.readdirSync(projectDir).filter((d) => {
+    const full = path.join(projectDir, d);
+    return fs.statSync(full).isDirectory() && d !== "memory" && fs.existsSync(path.join(full, "subagents"));
+  }).sort((a, b) => {
+    return fs.statSync(path.join(projectDir, b)).mtimeMs - fs.statSync(path.join(projectDir, a)).mtimeMs;
+  });
 }
 function scanSubagentUsage() {
   try {
-    const session = findActiveSession();
-    debugLog(`scanSubagentUsage session=${JSON.stringify(session)}`);
-    if (!session) return { tokens: 0, cost: 0 };
-    const projectDir = path.join(os.homedir(), ".claude", "projects", session.slug);
-    const subagentsDir = path.join(projectDir, session.sessionId, "subagents");
-    debugLog(`subagentsDir=${subagentsDir} exists=${fs.existsSync(subagentsDir)}`);
-    if (!fs.existsSync(subagentsDir)) return { tokens: 0, cost: 0 };
+    const slug = findProjectSlug();
+    const sessions = findSessionsWithSubagents(slug);
+    if (!sessions.length) return { tokens: 0, cost: 0 };
+    const projectDir = path.join(os.homedir(), ".claude", "projects", slug);
+    const subagentsDir = path.join(projectDir, sessions[0], "subagents");
     let totalTokens = 0;
     let totalCost = 0;
     for (const file of fs.readdirSync(subagentsDir).filter((f) => f.endsWith(".jsonl"))) {
