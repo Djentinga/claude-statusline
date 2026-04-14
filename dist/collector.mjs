@@ -86,6 +86,21 @@ function findActiveSession() {
     }
   } catch {
   }
+  try {
+    const slug = process.cwd().replace(/\//g, "-");
+    const projectDir = path.join(os.homedir(), ".claude", "projects", slug);
+    if (!fs.existsSync(projectDir)) return null;
+    const sessionDirs = fs.readdirSync(projectDir).filter((d) => {
+      const full = path.join(projectDir, d);
+      return fs.statSync(full).isDirectory() && d !== "memory";
+    }).map((d) => ({ dir: d, mtime: fs.statSync(path.join(projectDir, d)).mtimeMs })).sort((a, b) => b.mtime - a.mtime);
+    for (const s of sessionDirs) {
+      if (fs.existsSync(path.join(projectDir, s.dir, "subagents"))) {
+        return { slug, sessionId: s.dir };
+      }
+    }
+  } catch {
+  }
   return null;
 }
 function scanSubagentUsage() {

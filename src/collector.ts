@@ -85,9 +85,9 @@ function getModelRate(model: string): number {
 }
 
 function findActiveSession(): { slug: string; sessionId: string } | null {
+  // Try session files first (reliable after startup)
   const sessionsDir = path.join(os.homedir(), ".claude", "sessions");
   try {
-    // Find most recent session file by mtime
     const sessions = fs.readdirSync(sessionsDir)
       .filter(f => f.endsWith(".json"))
       .map(f => ({ file: f, mtime: fs.statSync(path.join(sessionsDir, f)).mtimeMs }))
@@ -97,6 +97,26 @@ function findActiveSession(): { slug: string; sessionId: string } | null {
       const data = JSON.parse(fs.readFileSync(path.join(sessionsDir, s.file), "utf-8"));
       if (data.cwd && data.sessionId) {
         return { slug: data.cwd.replace(/\//g, "-"), sessionId: data.sessionId };
+      }
+    }
+  } catch {}
+
+  // Fallback: session file may not exist yet (SessionStart hook race).
+  // Derive slug from cwd, find most recent session dir with subagents.
+  try {
+    const slug = process.cwd().replace(/\//g, "-");
+    const projectDir = path.join(os.homedir(), ".claude", "projects", slug);
+    if (!fs.existsSync(projectDir)) return null;
+    const sessionDirs = fs.readdirSync(projectDir)
+      .filter(d => {
+        const full = path.join(projectDir, d);
+        return fs.statSync(full).isDirectory() && d !== "memory";
+      })
+      .map(d => ({ dir: d, mtime: fs.statSync(path.join(projectDir, d)).mtimeMs }))
+      .sort((a, b) => b.mtime - a.mtime);
+    for (const s of sessionDirs) {
+      if (fs.existsSync(path.join(projectDir, s.dir, "subagents"))) {
+        return { slug, sessionId: s.dir };
       }
     }
   } catch {}
