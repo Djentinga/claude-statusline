@@ -17,26 +17,27 @@ var CACHE_PATH = path.join(os.homedir(), ".claude", ".statusline-cache.json");
 var LOCK_PATH = path.join(os.homedir(), ".claude", ".statusline-data.lock");
 function acquireLock() {
   try {
-    const fd = fs.openSync(LOCK_PATH, "w");
-    const existing = (() => {
+    fs.writeFileSync(LOCK_PATH, String(process.pid), { flag: "wx" });
+    return true;
+  } catch {
+  }
+  try {
+    const pid = Number(fs.readFileSync(LOCK_PATH, "utf-8").trim());
+    if (pid > 0) {
       try {
-        return fs.readFileSync(LOCK_PATH, "utf-8").trim();
-      } catch {
-        return "";
-      }
-    })();
-    if (existing) {
-      try {
-        process.kill(Number(existing), 0);
-        fs.closeSync(fd);
-        return null;
+        process.kill(pid, 0);
+        return false;
       } catch {
       }
     }
-    fs.writeFileSync(LOCK_PATH, String(process.pid));
-    return fd;
   } catch {
-    return null;
+  }
+  try {
+    fs.unlinkSync(LOCK_PATH);
+    fs.writeFileSync(LOCK_PATH, String(process.pid), { flag: "wx" });
+    return true;
+  } catch {
+    return false;
   }
 }
 function checkProcess(pattern) {
@@ -158,8 +159,7 @@ function readExistingCache() {
   }
 }
 async function main() {
-  const lockFd = acquireLock();
-  if (lockFd === null) process.exit(0);
+  if (!acquireLock()) process.exit(0);
   try {
     const slug = findProjectSlug();
     const [usage, incident] = await Promise.all([fetchUsage(), fetchIncident()]);

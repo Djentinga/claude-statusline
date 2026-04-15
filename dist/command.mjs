@@ -534,7 +534,8 @@ var COMPACT_AT = 967e3;
 var BAR_W = 8;
 function formatTokens(tokens) {
   if (tokens < 1e3) return String(tokens);
-  return Math.floor(tokens / 1e3) + "k";
+  if (tokens < 1e6) return Math.floor(tokens / 1e3) + "k";
+  return (tokens / 1e6).toFixed(1) + "M";
 }
 function calcExpected(resetsAt, windowSecs, daily = false) {
   if (!resetsAt) return null;

@@ -3,7 +3,8 @@ export const BAR_W = 8;
 
 export function formatTokens(tokens: number): string {
   if (tokens < 1000) return String(tokens);
-  return Math.floor(tokens / 1000) + "k";
+  if (tokens < 1_000_000) return Math.floor(tokens / 1000) + "k";
+  return (tokens / 1_000_000).toFixed(1) + "M";
 }
 
 export function calcExpected(

@@ -8,32 +8,31 @@ const CREDS_PATH = path.join(os.homedir(), ".claude", ".credentials.json");
 const CACHE_PATH = path.join(os.homedir(), ".claude", ".statusline-cache.json");
 const LOCK_PATH = path.join(os.homedir(), ".claude", ".statusline-data.lock");
 
-function acquireLock(): number | null {
+function acquireLock(): boolean {
+  // Atomic create-if-not-exists
   try {
-    const fd = fs.openSync(LOCK_PATH, "w");
-    // flock via fs.flockSync not available in Node, use a simple lock file strategy
-    // Write PID to lock file, check if process exists
-    const existing = (() => {
+    fs.writeFileSync(LOCK_PATH, String(process.pid), { flag: "wx" });
+    return true;
+  } catch {}
+  // Lock exists — check if holder is alive
+  try {
+    const pid = Number(fs.readFileSync(LOCK_PATH, "utf-8").trim());
+    if (pid > 0) {
       try {
-        return fs.readFileSync(LOCK_PATH, "utf-8").trim();
+        process.kill(pid, 0);
+        return false; // still running
       } catch {
-        return "";
-      }
-    })();
-    if (existing) {
-      try {
-        process.kill(Number(existing), 0);
-        // Process exists, another collector is running
-        fs.closeSync(fd);
-        return null;
-      } catch {
-        // Process doesn't exist, stale lock
+        // stale — fall through to reclaim
       }
     }
-    fs.writeFileSync(LOCK_PATH, String(process.pid));
-    return fd;
+  } catch {}
+  // Reclaim stale lock
+  try {
+    fs.unlinkSync(LOCK_PATH);
+    fs.writeFileSync(LOCK_PATH, String(process.pid), { flag: "wx" });
+    return true;
   } catch {
-    return null;
+    return false;
   }
 }
 
@@ -188,8 +187,7 @@ function readExistingCache(): Record<string, unknown> {
 }
 
 async function main() {
-  const lockFd = acquireLock();
-  if (lockFd === null) process.exit(0);
+  if (!acquireLock()) process.exit(0);
 
   try {
     const slug = findProjectSlug();
