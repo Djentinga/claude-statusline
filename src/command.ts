@@ -36,7 +36,9 @@ if (stale) {
 
 // Format and write output atomically
 try {
-  const projectSlug = process.cwd().replace(/\//g, "-");
+  // Claude passes authoritative cwd in stdin JSON — fall back to process.cwd()
+  const cwd = data.workspace?.current_dir ?? data.cwd ?? process.cwd();
+  const projectSlug = cwd.replace(/\//g, "-");
   const output = formatStatusLine(model, tokensUsed, cache, projectSlug);
   fs.writeFileSync(1, output);
 } catch {

@@ -4,6 +4,11 @@ export interface StdinData {
     used_percentage?: number;
     context_window_size?: number;
   };
+  cwd?: string;
+  workspace?: {
+    current_dir?: string;
+    project_dir?: string;
+  };
 }
 
 export interface UsageWindow {

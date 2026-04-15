@@ -736,7 +736,8 @@ if (stale) {
   }
 }
 try {
-  const projectSlug = process.cwd().replace(/\//g, "-");
+  const cwd = data.workspace?.current_dir ?? data.cwd ?? process.cwd();
+  const projectSlug = cwd.replace(/\//g, "-");
   const output = formatStatusLine(model, tokensUsed, cache, projectSlug);
   fs2.writeFileSync(1, output);
 } catch {
