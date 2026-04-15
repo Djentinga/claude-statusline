@@ -685,12 +685,12 @@ function statusIcon(incident) {
       return source_default.dim(label);
   }
 }
-function formatStatusLine(model2, tokensUsed2, cache2) {
+function formatStatusLine(model2, tokensUsed2, cache2, projectSlug) {
   const ctxPct2 = Math.min(Math.round(tokensUsed2 / COMPACT_AT * 100), 100);
   const git = getGitInfo();
   const stale2 = isCacheVeryStale(cache2);
   const DIVIDER_W = 80;
-  const sub = cache2?.subagent_usage;
+  const sub = cache2?.subagent_usage?.[projectSlug];
   const totalTokens = tokensUsed2 + (sub?.tokens ?? 0);
   const totalCost = estimateCost(model2, tokensUsed2) + (sub?.cost ?? 0);
   const costStr = totalCost < 0.01 ? "<$0.01" : `~$${totalCost.toFixed(2)}`;
@@ -736,7 +736,8 @@ if (stale) {
   }
 }
 try {
-  const output = formatStatusLine(model, tokensUsed, cache);
+  const projectSlug = process.cwd().replace(/\//g, "-");
+  const output = formatStatusLine(model, tokensUsed, cache, projectSlug);
   fs2.writeFileSync(1, output);
 } catch {
   fs2.writeFileSync(1, `${model} | ?`);

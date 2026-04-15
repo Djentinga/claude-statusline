@@ -36,7 +36,8 @@ if (stale) {
 
 // Format and write output atomically
 try {
-  const output = formatStatusLine(model, tokensUsed, cache);
+  const projectSlug = process.cwd().replace(/\//g, "-");
+  const output = formatStatusLine(model, tokensUsed, cache, projectSlug);
   fs.writeFileSync(1, output);
 } catch {
   fs.writeFileSync(1, `${model} | ?`);

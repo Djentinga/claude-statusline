@@ -75,59 +75,55 @@ function getModelRate(model) {
   return 3;
 }
 function findProjectSlug() {
-  const sessionsDir = path.join(os.homedir(), ".claude", "sessions");
-  try {
-    const sessions = fs.readdirSync(sessionsDir).filter((f) => f.endsWith(".json")).map((f) => ({ file: f, mtime: fs.statSync(path.join(sessionsDir, f)).mtimeMs })).sort((a, b) => b.mtime - a.mtime);
-    for (const s of sessions) {
-      const data = JSON.parse(fs.readFileSync(path.join(sessionsDir, s.file), "utf-8"));
-      if (data.cwd) return data.cwd.replace(/\//g, "-");
-    }
-  } catch {
-  }
   return process.cwd().replace(/\//g, "-");
 }
+var RECENT_SESSION_WINDOW_MS = 24 * 60 * 60 * 1e3;
 function findSessionsWithSubagents(slug) {
   const projectDir = path.join(os.homedir(), ".claude", "projects", slug);
   if (!fs.existsSync(projectDir)) return [];
+  const now = Date.now();
   return fs.readdirSync(projectDir).filter((d) => {
     const full = path.join(projectDir, d);
-    return fs.statSync(full).isDirectory() && d !== "memory" && fs.existsSync(path.join(full, "subagents"));
+    if (!fs.statSync(full).isDirectory() || d === "memory") return false;
+    if (!fs.existsSync(path.join(full, "subagents"))) return false;
+    return now - fs.statSync(full).mtimeMs <= RECENT_SESSION_WINDOW_MS;
   }).sort((a, b) => {
     return fs.statSync(path.join(projectDir, b)).mtimeMs - fs.statSync(path.join(projectDir, a)).mtimeMs;
   });
 }
-function scanSubagentUsage() {
+function scanSubagentUsage(slug) {
   try {
-    const slug = findProjectSlug();
     const sessions = findSessionsWithSubagents(slug);
     if (!sessions.length) return { tokens: 0, cost: 0 };
     const projectDir = path.join(os.homedir(), ".claude", "projects", slug);
-    const subagentsDir = path.join(projectDir, sessions[0], "subagents");
     let totalTokens = 0;
     let totalCost = 0;
-    for (const file of fs.readdirSync(subagentsDir).filter((f) => f.endsWith(".jsonl"))) {
-      const content = fs.readFileSync(path.join(subagentsDir, file), "utf-8");
-      let lastContextSize = 0;
-      let agentCost = 0;
-      for (const line of content.split("\n")) {
-        if (!line.trim()) continue;
-        try {
-          const obj = JSON.parse(line);
-          const msg = obj.message;
-          const u = msg?.usage;
-          if (!u) continue;
-          const input = u.input_tokens || 0;
-          const output = u.output_tokens || 0;
-          const cacheRead = u.cache_read_input_tokens || 0;
-          const cacheCreation = u.cache_creation_input_tokens || 0;
-          const base = getModelRate(msg.model || "");
-          lastContextSize = input + cacheRead + cacheCreation + output;
-          agentCost += (input * base + cacheRead * base * 0.1 + cacheCreation * base * 1.25 + output * base * OUTPUT_MULTIPLIER) / 1e6;
-        } catch {
+    for (const sessionId of sessions) {
+      const subagentsDir = path.join(projectDir, sessionId, "subagents");
+      for (const file of fs.readdirSync(subagentsDir).filter((f) => f.endsWith(".jsonl"))) {
+        const content = fs.readFileSync(path.join(subagentsDir, file), "utf-8");
+        let lastContextSize = 0;
+        let agentCost = 0;
+        for (const line of content.split("\n")) {
+          if (!line.trim()) continue;
+          try {
+            const obj = JSON.parse(line);
+            const msg = obj.message;
+            const u = msg?.usage;
+            if (!u) continue;
+            const input = u.input_tokens || 0;
+            const output = u.output_tokens || 0;
+            const cacheRead = u.cache_read_input_tokens || 0;
+            const cacheCreation = u.cache_creation_input_tokens || 0;
+            const base = getModelRate(msg.model || "");
+            lastContextSize = input + cacheRead + cacheCreation + output;
+            agentCost += (input * base + cacheRead * base * 0.1 + cacheCreation * base * 1.25 + output * base * OUTPUT_MULTIPLIER) / 1e6;
+          } catch {
+          }
         }
+        totalTokens += lastContextSize;
+        totalCost += agentCost;
       }
-      totalTokens += lastContextSize;
-      totalCost += agentCost;
     }
     return { tokens: totalTokens, cost: totalCost };
   } catch {
@@ -147,19 +143,34 @@ async function fetchIncident() {
     return null;
   }
 }
+function readExistingCache() {
+  try {
+    return JSON.parse(fs.readFileSync(CACHE_PATH, "utf-8"));
+  } catch {
+    return {};
+  }
+}
 async function main() {
   const lockFd = acquireLock();
   if (lockFd === null) process.exit(0);
   try {
+    const slug = findProjectSlug();
     const [usage, incident] = await Promise.all([fetchUsage(), fetchIncident()]);
-    const subagent_usage = scanSubagentUsage();
+    const subagent = scanSubagentUsage(slug);
+    const existing = readExistingCache();
+    const subagentMap = existing.subagent_usage && typeof existing.subagent_usage === "object" && !Array.isArray(existing.subagent_usage) && !("tokens" in existing.subagent_usage) ? existing.subagent_usage : {};
+    if (subagent.tokens > 0) {
+      subagentMap[slug] = subagent;
+    } else {
+      delete subagentMap[slug];
+    }
     const result = {
       ts: Date.now() / 1e3,
       rider_running: checkProcess("rider"),
       serena_running: checkProcess("serena start-mcp-server"),
       usage,
       incident,
-      subagent_usage: subagent_usage.tokens > 0 ? subagent_usage : void 0
+      subagent_usage: Object.keys(subagentMap).length > 0 ? subagentMap : void 0
     };
     const dir = path.dirname(CACHE_PATH);
     const tmp = path.join(dir, `.statusline-cache-${process.pid}.tmp`);

@@ -33,6 +33,7 @@ export interface CacheData {
   serena_running: boolean;
   usage?: UsageData;
   incident?: IncidentInfo | null;
-  subagent_usage?: SubagentUsage;
+  /** Map of project slug → sub-agent usage. Keyed so multiple projects share one cache. */
+  subagent_usage?: Record<string, SubagentUsage>;
 }
 

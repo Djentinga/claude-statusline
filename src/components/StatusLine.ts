@@ -19,14 +19,14 @@ function statusIcon(incident: IncidentInfo | null | undefined): string {
   }
 }
 
-export function formatStatusLine(model: string, tokensUsed: number, cache: CacheData | null): string {
+export function formatStatusLine(model: string, tokensUsed: number, cache: CacheData | null, projectSlug: string): string {
   const ctxPct = Math.min(Math.round((tokensUsed / COMPACT_AT) * 100), 100);
   const git = getGitInfo();
   const stale = isCacheVeryStale(cache);
   const DIVIDER_W = 80;
 
   // Line 1: Model, Git, Session tokens, Cost
-  const sub = cache?.subagent_usage;
+  const sub = cache?.subagent_usage?.[projectSlug];
   const totalTokens = tokensUsed + (sub?.tokens ?? 0);
   const totalCost = estimateCost(model, tokensUsed) + (sub?.cost ?? 0);
   const costStr = totalCost < 0.01 ? "<$0.01" : `~$${totalCost.toFixed(2)}`;
