@@ -5,6 +5,13 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execSync } from "node:child_process";
+
+// src/lib/slug.ts
+function cwdToSlug(cwd) {
+  return cwd.replace(/[\/.]/g, "-").replace(/[^a-zA-Z0-9-]/g, "");
+}
+
+// src/collector.ts
 var CREDS_PATH = path.join(os.homedir(), ".claude", ".credentials.json");
 var CACHE_PATH = path.join(os.homedir(), ".claude", ".statusline-cache.json");
 var LOCK_PATH = path.join(os.homedir(), ".claude", ".statusline-data.lock");
@@ -75,7 +82,7 @@ function getModelRate(model) {
   return 3;
 }
 function findProjectSlug() {
-  return process.cwd().replace(/\//g, "-");
+  return cwdToSlug(process.cwd());
 }
 var RECENT_SESSION_WINDOW_MS = 24 * 60 * 60 * 1e3;
 function findSessionsWithSubagents(slug) {

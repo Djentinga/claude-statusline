@@ -29,6 +29,11 @@ function isCacheVeryStale(cache2) {
   return Date.now() / 1e3 - cache2.ts > STALE_THRESHOLD;
 }
 
+// src/lib/slug.ts
+function cwdToSlug(cwd) {
+  return cwd.replace(/[\/.]/g, "-").replace(/[^a-zA-Z0-9-]/g, "");
+}
+
 // node_modules/chalk/source/vendor/ansi-styles/index.js
 var ANSI_BACKGROUND_OFFSET = 10;
 var wrapAnsi16 = (offset = 0) => (code) => `\x1B[${code + offset}m`;
@@ -737,7 +742,7 @@ if (stale) {
 }
 try {
   const cwd = data.workspace?.current_dir ?? data.cwd ?? process.cwd();
-  const projectSlug = cwd.replace(/\//g, "-");
+  const projectSlug = cwdToSlug(cwd);
   const output = formatStatusLine(model, tokensUsed, cache, projectSlug);
   fs2.writeFileSync(1, output);
 } catch {

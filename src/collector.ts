@@ -2,6 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execSync } from "node:child_process";
+import { cwdToSlug } from "./lib/slug.js";
 
 const CREDS_PATH = path.join(os.homedir(), ".claude", ".credentials.json");
 const CACHE_PATH = path.join(os.homedir(), ".claude", ".statusline-cache.json");
@@ -86,7 +87,7 @@ function getModelRate(model: string): number {
 
 function findProjectSlug(): string {
   // Prefer process.cwd() — collector inherits cwd from Claude (set to project dir)
-  return process.cwd().replace(/\//g, "-");
+  return cwdToSlug(process.cwd());
 }
 
 // Only include session dirs modified in the last 24h — captures the current "work session"

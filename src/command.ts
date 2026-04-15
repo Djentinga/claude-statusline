@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { StdinData } from "./lib/types.js";
 import { readCache, isCacheStale } from "./lib/cache.js";
+import { cwdToSlug } from "./lib/slug.js";
 import { formatStatusLine } from "./components/StatusLine.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -38,7 +39,7 @@ if (stale) {
 try {
   // Claude passes authoritative cwd in stdin JSON — fall back to process.cwd()
   const cwd = data.workspace?.current_dir ?? data.cwd ?? process.cwd();
-  const projectSlug = cwd.replace(/\//g, "-");
+  const projectSlug = cwdToSlug(cwd);
   const output = formatStatusLine(model, tokensUsed, cache, projectSlug);
   fs.writeFileSync(1, output);
 } catch {
