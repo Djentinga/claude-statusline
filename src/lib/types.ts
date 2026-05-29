@@ -16,9 +16,19 @@ export interface UsageWindow {
   resets_at?: string;
 }
 
+export interface ExtraUsage {
+  is_enabled?: boolean;
+  monthly_limit?: number;  // credits, in cents
+  used_credits?: number;   // credits, in cents
+  utilization?: number;    // percent 0-100
+  currency?: string;
+  disabled_reason?: string | null;
+}
+
 export interface UsageData {
-  five_hour?: UsageWindow;
-  seven_day?: UsageWindow;
+  five_hour?: UsageWindow | null;
+  seven_day?: UsageWindow | null;
+  extra_usage?: ExtraUsage | null;
 }
 
 export interface IncidentInfo {
@@ -27,18 +37,11 @@ export interface IncidentInfo {
   impact: string;   // none, minor, major, critical
 }
 
-export interface SubagentUsage {
-  tokens: number;  // input + output
-  cost: number;    // estimated USD
-}
-
 export interface CacheData {
   ts: number;
   rider_running: boolean;
   serena_running: boolean;
   usage?: UsageData;
   incident?: IncidentInfo | null;
-  /** Map of project slug → sub-agent usage. Keyed so multiple projects share one cache. */
-  subagent_usage?: Record<string, SubagentUsage>;
 }
 

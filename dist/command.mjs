@@ -29,11 +29,6 @@ function isCacheVeryStale(cache2) {
   return Date.now() / 1e3 - cache2.ts > STALE_THRESHOLD;
 }
 
-// src/lib/slug.ts
-function cwdToSlug(cwd) {
-  return cwd.replace(/[\/.]/g, "-").replace(/[^a-zA-Z0-9-]/g, "");
-}
-
 // node_modules/chalk/source/vendor/ansi-styles/index.js
 var ANSI_BACKGROUND_OFFSET = 10;
 var wrapAnsi16 = (offset = 0) => (code) => `\x1B[${code + offset}m`;
@@ -553,20 +548,6 @@ function calcExpected(resetsAt, windowSecs, daily = false) {
     return null;
   }
 }
-var MODEL_RATES = { opus: 15, sonnet: 3, haiku: 0.8 };
-var CACHE_HIT_RATE = 0.75;
-function estimateCost(model2, tokens) {
-  const key = model2.toLowerCase();
-  let base = 3;
-  for (const [name, r] of Object.entries(MODEL_RATES)) {
-    if (key.includes(name)) {
-      base = r;
-      break;
-    }
-  }
-  const effective = base * (1 - CACHE_HIT_RATE) + base * 0.1 * CACHE_HIT_RATE;
-  return tokens / 1e6 * effective;
-}
 function resetTimeLocal(resetsAt) {
   if (!resetsAt) return "";
   try {
@@ -645,6 +626,17 @@ function usageDisplay(usage, stale2) {
   if (!usage) {
     return `${stalePrefix}\u{1F550} ?${SEP}\u{1F4C5} ?`;
   }
+  const ex = usage.extra_usage;
+  if (usage.five_hour == null && usage.seven_day == null && ex?.is_enabled) {
+    const util = ex.utilization ?? 0;
+    const used = (ex.used_credits ?? 0) / 100;
+    const limit = (ex.monthly_limit ?? 0) / 100;
+    const sym = ex.currency === "USD" || !ex.currency ? "$" : `${ex.currency} `;
+    const c = budgetColor(util, null);
+    const usedStr = `${sym}${used.toFixed(2)}`;
+    const limitStr = `${sym}${limit.toLocaleString("en-US")}`;
+    return `${stalePrefix}\u{1F4B3} ${bar(util, c)} ${source_default[c](usedStr)} / ${limitStr} (${util.toFixed(1)}%)`;
+  }
   const h5 = usage.five_hour;
   const d7 = usage.seven_day;
   const h5v = h5?.utilization != null ? Math.floor(h5.utilization) : null;
@@ -691,19 +683,13 @@ function statusIcon(incident) {
       return source_default.dim(label);
   }
 }
-function formatStatusLine(model2, tokensUsed2, cache2, projectSlug) {
+function formatStatusLine(model2, tokensUsed2, cache2) {
   const ctxPct2 = Math.min(Math.round(tokensUsed2 / COMPACT_AT * 100), 100);
   const git = getGitInfo();
   const stale2 = isCacheVeryStale(cache2);
   const DIVIDER_W = 80;
-  const sub = cache2?.subagent_usage?.[projectSlug];
-  const totalTokens = tokensUsed2 + (sub?.tokens ?? 0);
-  const totalCost = estimateCost(model2, tokensUsed2) + (sub?.cost ?? 0);
-  const costStr = totalCost < 0.01 ? "<$0.01" : `~$${totalCost.toFixed(2)}`;
   const line1Parts = [source_default.cyan.bold(`\u26A1 ${model2}`)];
   if (git) line1Parts.push(source_default.cyan(git));
-  line1Parts.push(source_default.dim(`\u03A3 ${formatTokens(totalTokens)}`));
-  line1Parts.push(source_default.dim(costStr));
   const line1 = line1Parts.join(SEP2);
   const divider = source_default.dim("\u2500".repeat(DIVIDER_W));
   const ctxC = ctxColor(ctxPct2);
@@ -742,9 +728,7 @@ if (stale) {
   }
 }
 try {
-  const cwd = data.workspace?.current_dir ?? data.cwd ?? process.cwd();
-  const projectSlug = cwdToSlug(cwd);
-  const output = formatStatusLine(model, tokensUsed, cache, projectSlug);
+  const output = formatStatusLine(model, tokensUsed, cache);
   fs2.writeFileSync(1, output);
 } catch {
   fs2.writeFileSync(1, `${model} | ?`);

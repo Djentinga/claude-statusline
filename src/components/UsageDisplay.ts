@@ -14,6 +14,19 @@ export function usageDisplay(usage: UsageData | undefined, stale: boolean): stri
     return `${stalePrefix}🕐 ?${SEP}📅 ?`;
   }
 
+  // Enterprise: 5h/7d windows don't apply (both null). Show credit spend instead.
+  const ex = usage.extra_usage;
+  if (usage.five_hour == null && usage.seven_day == null && ex?.is_enabled) {
+    const util = ex.utilization ?? 0;
+    const used = (ex.used_credits ?? 0) / 100;   // cents → currency units
+    const limit = (ex.monthly_limit ?? 0) / 100;
+    const sym = ex.currency === "USD" || !ex.currency ? "$" : `${ex.currency} `;
+    const c = budgetColor(util, null);
+    const usedStr = `${sym}${used.toFixed(2)}`;
+    const limitStr = `${sym}${limit.toLocaleString("en-US")}`;
+    return `${stalePrefix}💳 ${bar(util, c)} ${chalk[c](usedStr)} / ${limitStr} (${util.toFixed(1)}%)`;
+  }
+
   const h5 = usage.five_hour;
   const d7 = usage.seven_day;
   const h5v = h5?.utilization != null ? Math.floor(h5.utilization) : null;

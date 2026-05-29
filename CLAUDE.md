@@ -25,7 +25,7 @@ StatusLine          — main layout (Box flexDirection="column")
 ├── Divider
 ├── Line 2          — context bar, usage bars
 │   ├── Bar         — reusable progress bar with optional cutoff marker
-│   └── UsageDisplay — 5h + 7d usage with expected-usage markers
+│   └── UsageDisplay — 5h + 7d usage (or enterprise credit spend)
 └── Divider
 ```
 
@@ -36,6 +36,10 @@ The context bar does NOT use the raw `used_percentage` from stdin. It rescales: 
 ### 7-day expected usage
 
 Uses daily granularity (`Math.ceil(elapsed / 86400)` days), not continuous time. ~14% per day.
+
+### Enterprise mode
+
+When the usage API returns `five_hour` AND `seven_day` both `null` and `extra_usage.is_enabled`, the account has no rolling 5h/7d windows. `UsageDisplay` swaps the two bars for a single credit-spend bar: `💳 [bar] $used / $limit (util%)`. `extra_usage` credits are in cents (`/100` → currency units).
 
 ## Key constants (in `src/lib/format.ts`)
 
