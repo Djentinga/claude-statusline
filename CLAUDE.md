@@ -12,7 +12,7 @@ Two bundled entry points (`dist/`) built from `src/`, plus a hook:
 
 1. **`src/command.tsx`** → `dist/command.mjs` — Entry point. Reads JSON from stdin (Claude provides `{"model": {"display_name": ...}, "context_window": {"used_percentage": N, "context_window_size": N}}`), checks cache freshness, spawns background collector if stale, renders Ink components to stdout, exits.
 
-2. **`src/collector.ts`** → `dist/collector.mjs` — Background data collector. Acquires PID-based lock, fetches Rider/Serena process status via `pgrep`, API usage from `api.anthropic.com/api/oauth/usage` using OAuth token from `~/.claude/.credentials.json` (path: `claudeAiOauth.accessToken`), writes cache atomically via temp file + `fs.renameSync()`.
+2. **`src/collector.ts`** → `dist/collector.mjs` — Background data collector. Acquires PID-based lock, fetches API usage from `api.anthropic.com/api/oauth/usage` using OAuth token from `~/.claude/.credentials.json` (path: `claudeAiOauth.accessToken`), writes cache atomically via temp file + `fs.renameSync()`.
 
 3. **`scripts/ensure-settings.py`** — SessionStart hook (registered in `hooks/hooks.json`). Patches `~/.claude/settings.json` to register `node .../dist/command.mjs`. Idempotent.
 

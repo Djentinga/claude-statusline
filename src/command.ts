@@ -29,6 +29,7 @@ if (stale) {
     const child = spawn(process.execPath, [collector], {
       detached: true,
       stdio: "ignore",
+      windowsHide: true,
     });
     child.unref();
   } catch {}

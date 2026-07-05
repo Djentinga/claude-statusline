@@ -39,8 +39,6 @@ export interface IncidentInfo {
 
 export interface CacheData {
   ts: number;
-  rider_running: boolean;
-  serena_running: boolean;
   usage?: UsageData;
   incident?: IncidentInfo | null;
 }

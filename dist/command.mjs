@@ -566,12 +566,14 @@ function getGitInfo() {
     const branch = execSync("git rev-parse --abbrev-ref HEAD", {
       timeout: 1e3,
       encoding: "utf-8",
-      stdio: ["pipe", "pipe", "pipe"]
+      stdio: ["pipe", "pipe", "pipe"],
+      windowsHide: true
     }).trim();
     const toplevel = execSync("git rev-parse --show-toplevel", {
       timeout: 1e3,
       encoding: "utf-8",
-      stdio: ["pipe", "pipe", "pipe"]
+      stdio: ["pipe", "pipe", "pipe"],
+      windowsHide: true
     }).trim();
     const repo = path2.basename(toplevel);
     return `${repo}:${branch}`;
@@ -721,7 +723,8 @@ if (stale) {
     const collector = path3.join(__dirname, "collector.mjs");
     const child = spawn(process.execPath, [collector], {
       detached: true,
-      stdio: "ignore"
+      stdio: "ignore",
+      windowsHide: true
     });
     child.unref();
   } catch {

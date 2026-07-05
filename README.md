@@ -1,13 +1,12 @@
 # claude-statusline
 
-Custom Claude Code statusline plugin with context-to-compact progress bar, API usage tracking, and service status.
+Custom Claude Code statusline plugin with context-to-compact progress bar and API usage tracking.
 
 ## Features
 
 - **Context bar** — rescaled so 100% = auto-compact threshold (~967k tokens). Shows 0–967k range, not the full context window.
 - **5-hour / 7-day usage bars** — with expected-usage markers based on time elapsed in window
 - **5-hour reset time** — shows when your rate limit window resets
-- **Service status** — badges for JetBrains Rider and Serena
 
 ## Install
 

@@ -35,18 +35,9 @@ function acquireLock(): boolean {
   }
 }
 
-function checkProcess(pattern: string): boolean {
-  try {
-    execSync(`pgrep -fi "${pattern}"`, { stdio: "pipe" });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 function getClaudeVersion(): string {
   try {
-    return execSync("claude --version", { encoding: "utf-8", timeout: 2000 }).trim() || "unknown";
+    return execSync("claude --version", { encoding: "utf-8", timeout: 2000, windowsHide: true }).trim() || "unknown";
   } catch {
     return "unknown";
   }
@@ -95,8 +86,6 @@ async function main() {
 
     const result = {
       ts: Date.now() / 1000,
-      rider_running: checkProcess("rider"),
-      serena_running: checkProcess("serena start-mcp-server"),
       usage,
       incident,
     };

@@ -7,11 +7,13 @@ export function getGitInfo(): string {
       timeout: 1000,
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"],
+      windowsHide: true,
     }).trim();
     const toplevel = execSync("git rev-parse --show-toplevel", {
       timeout: 1000,
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"],
+      windowsHide: true,
     }).trim();
     const repo = path.basename(toplevel);
     return `${repo}:${branch}`;

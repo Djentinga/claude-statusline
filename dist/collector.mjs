@@ -33,17 +33,9 @@ function acquireLock() {
     return false;
   }
 }
-function checkProcess(pattern) {
-  try {
-    execSync(`pgrep -fi "${pattern}"`, { stdio: "pipe" });
-    return true;
-  } catch {
-    return false;
-  }
-}
 function getClaudeVersion() {
   try {
-    return execSync("claude --version", { encoding: "utf-8", timeout: 2e3 }).trim() || "unknown";
+    return execSync("claude --version", { encoding: "utf-8", timeout: 2e3, windowsHide: true }).trim() || "unknown";
   } catch {
     return "unknown";
   }
@@ -85,8 +77,6 @@ async function main() {
     const [usage, incident] = await Promise.all([fetchUsage(), fetchIncident()]);
     const result = {
       ts: Date.now() / 1e3,
-      rider_running: checkProcess("rider"),
-      serena_running: checkProcess("serena start-mcp-server"),
       usage,
       incident
     };
