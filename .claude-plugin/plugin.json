@@ -1,7 +1,7 @@
 {
   "name": "statusline",
   "description": "Custom statusline with context-to-compact bar and API usage",
-  "version": "2.8.0",
+  "version": "2.8.1",
   "author": {
     "name": "Joachim Arting"
   }

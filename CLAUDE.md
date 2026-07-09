@@ -14,7 +14,7 @@ Two bundled entry points (`dist/`) built from `src/`, plus a hook:
 
 2. **`src/collector.ts`** → `dist/collector.mjs` — Background data collector. Acquires PID-based lock, fetches API usage from `api.anthropic.com/api/oauth/usage` using OAuth token from `~/.claude/.credentials.json` (path: `claudeAiOauth.accessToken`), writes cache atomically via temp file + `fs.renameSync()`.
 
-3. **`scripts/ensure-settings.py`** — SessionStart hook (registered in `hooks/hooks.json`). Patches `~/.claude/settings.json` to register `node .../dist/command.mjs`. Idempotent.
+3. **`scripts/ensure-settings.mjs`** — SessionStart hook (registered in `hooks/hooks.json`). Patches `~/.claude/settings.json` to register `node .../dist/command.mjs`. Idempotent. Node (not Python) for cross-platform support — Windows has no `python3`.
 
 ### Component hierarchy
 

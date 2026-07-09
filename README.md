@@ -38,7 +38,7 @@ src/
     format.ts          # Constants (COMPACT_AT, BAR_W, CACHE_TTL) and formatting helpers
     types.ts           # TypeScript interfaces
 scripts/
-  ensure-settings.py   # SessionStart hook — patches settings.json once
+  ensure-settings.mjs  # SessionStart hook — patches settings.json once
 hooks/
   hooks.json           # Registers the SessionStart hook
 dist/                  # Built output (esbuild bundles src/ → dist/)

@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/ensure-settings.py"
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/ensure-settings.mjs"
           },
           {
             "type": "command",
