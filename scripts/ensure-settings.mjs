@@ -5,15 +5,17 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const SETTINGS_PATH = path.join(os.homedir(), ".claude", "settings.json");
 const PLUGIN_ROOT =
   process.env.CLAUDE_PLUGIN_ROOT ||
-  path.dirname(path.dirname(new URL(import.meta.url).pathname));
+  path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
 // Forward slashes work on every platform when the shell invokes node.
+// Quoted so paths containing spaces (e.g. Windows usernames) survive shell splitting.
 const commandPath = path.join(PLUGIN_ROOT, "dist", "command.mjs").replace(/\\/g, "/");
-const EXPECTED_CMD = `node ${commandPath}`;
+const EXPECTED_CMD = `node "${commandPath}"`;
 
 let settings = {};
 try {
