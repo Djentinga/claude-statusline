@@ -5,11 +5,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/ensure-settings.mjs"
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/ensure-settings.mjs\""
           },
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/dist/collector.mjs"
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/dist/collector.mjs\""
           }
         ]
       }
@@ -19,7 +19,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/dist/collector.mjs"
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/dist/collector.mjs\""
           }
         ]
       }
@@ -30,7 +30,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/dist/collector.mjs"
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/dist/collector.mjs\""
           }
         ]
       }
