@@ -4,24 +4,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Claude Code statusline plugin — TypeScript + Ink (React for CLIs). Displays context usage, API rate limits, service status, and git info in the Claude Code statusline. Version tracked in `.claude-plugin/plugin.json`.
+Claude Code statusline plugin — TypeScript CLI formatter using chalk. Displays context usage, API rate limits, service status, and git info in the Claude Code statusline. Version tracked in `.claude-plugin/plugin.json`.
 
 ## Architecture
 
 Two bundled entry points (`dist/`) built from `src/`, plus a hook:
 
-1. **`src/command.tsx`** → `dist/command.mjs` — Entry point. Reads JSON from stdin (Claude provides `{"model": {"display_name": ...}, "context_window": {"used_percentage": N, "context_window_size": N}}`), checks cache freshness, spawns background collector if stale, renders Ink components to stdout, exits.
+1. **`src/command.ts`** → `dist/command.mjs` — Entry point. Reads JSON from stdin (Claude provides `{"model": {"display_name": ...}, "context_window": {"used_percentage": N, "context_window_size": N}}`), checks cache freshness, spawns background collector if stale, formats the statusline to stdout, exits.
 
-2. **`src/collector.ts`** → `dist/collector.mjs` — Background data collector. Acquires PID-based lock, fetches API usage from `api.anthropic.com/api/oauth/usage` using OAuth token from `~/.claude/.credentials.json` (path: `claudeAiOauth.accessToken`), writes cache atomically via temp file + `fs.renameSync()`.
+2. **`src/collector.ts`** → `dist/collector.mjs` — Background data collector. Acquires PID-based lock, skips fetching while the cache is fresh, backs off longer after cached usage API rate-limit errors, fetches API usage from `api.anthropic.com/api/oauth/usage` using OAuth token from `~/.claude/.credentials.json` (path: `claudeAiOauth.accessToken`), and writes cache atomically via temp file + `fs.renameSync()`.
 
 3. **`scripts/ensure-settings.mjs`** — SessionStart hook (registered in `hooks/hooks.json`). Patches `~/.claude/settings.json` to register `node .../dist/command.mjs`. Idempotent. Node (not Python) for cross-platform support — Windows has no `python3`.
 
 ### Component hierarchy
 
 ```
-StatusLine          — main layout (Box flexDirection="column")
-├── Line 1          — model, git info, service badges
-│   ├── ServiceBadge — green/dim indicator per service
+StatusLine          — main formatter
+├── Line 1          — model, git info
 ├── Divider
 ├── Line 2          — context bar, usage bars
 │   ├── Bar         — reusable progress bar with optional cutoff marker

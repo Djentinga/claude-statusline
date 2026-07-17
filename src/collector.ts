@@ -2,10 +2,12 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execSync } from "node:child_process";
+import { CACHE_PATH, CACHE_TTL, readCache } from "./lib/cache.js";
+import type { CacheData } from "./lib/types.js";
 
 const CREDS_PATH = path.join(os.homedir(), ".claude", ".credentials.json");
-const CACHE_PATH = path.join(os.homedir(), ".claude", ".statusline-cache.json");
 const LOCK_PATH = path.join(os.homedir(), ".claude", ".statusline-data.lock");
+const RATE_LIMIT_BACKOFF = 10 * 60;
 
 function acquireLock(): boolean {
   // Atomic create-if-not-exists
@@ -62,6 +64,21 @@ async function fetchUsage(): Promise<unknown | null> {
   }
 }
 
+function cacheAge(cache: CacheData): number {
+  return Date.now() / 1000 - cache.ts;
+}
+
+function isRateLimitError(cache: CacheData): boolean {
+  return cache.usage?.error?.type === "rate_limit_error";
+}
+
+function shouldSkipFetch(cache: CacheData | null): boolean {
+  if (!cache?.ts) return false;
+
+  const retryAfter = isRateLimitError(cache) ? RATE_LIMIT_BACKOFF : CACHE_TTL;
+  return cacheAge(cache) < retryAfter;
+}
+
 const IMPACT_RANK: Record<string, number> = { critical: 3, major: 2, minor: 1, none: 0 };
 
 async function fetchIncident(): Promise<{ name: string; status: string; impact: string } | null> {
@@ -82,6 +99,11 @@ async function main() {
   if (!acquireLock()) process.exit(0);
 
   try {
+    const cache = readCache();
+    if (shouldSkipFetch(cache)) {
+      return;
+    }
+
     const [usage, incident] = await Promise.all([fetchUsage(), fetchIncident()]);
 
     const result = {

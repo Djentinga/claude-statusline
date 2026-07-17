@@ -27,15 +27,15 @@ On first launch, the `SessionStart` hook patches `~/.claude/settings.json` to re
 
 ```
 src/
-  command.tsx          # Entry point — reads stdin JSON, checks cache, spawns collector, renders Ink output
-  collector.ts         # Background data collector — service status, API usage, writes cache
+  command.ts           # Entry point — reads stdin JSON, checks cache, spawns collector, formats output
+  collector.ts         # Background data collector — service status, API usage, writes cache with TTL/backoff
   components/
     StatusLine.ts      # Main layout — model, git, services, context bar, usage bars
     Bar.ts             # Reusable progress bar with optional cutoff marker
     UsageDisplay.ts    # 5h + 7d usage with expected-usage markers
-    ServiceBadge.ts    # Green/dim indicator per service
   lib/
-    format.ts          # Constants (COMPACT_AT, BAR_W, CACHE_TTL) and formatting helpers
+    format.ts          # Constants (COMPACT_AT, BAR_W) and formatting helpers
+    cache.ts           # Cache path, TTL, stale checks, and cache reader
     types.ts           # TypeScript interfaces
 scripts/
   ensure-settings.mjs  # SessionStart hook — patches settings.json once

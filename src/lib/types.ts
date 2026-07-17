@@ -29,6 +29,10 @@ export interface UsageData {
   five_hour?: UsageWindow | null;
   seven_day?: UsageWindow | null;
   extra_usage?: ExtraUsage | null;
+  error?: {
+    type?: string;
+    message?: string;
+  };
 }
 
 export interface IncidentInfo {
@@ -42,4 +46,3 @@ export interface CacheData {
   usage?: UsageData;
   incident?: IncidentInfo | null;
 }
-
