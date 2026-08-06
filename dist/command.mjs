@@ -1,9 +1,9 @@
 process.env.FORCE_COLOR='1';import{createRequire}from'module';const require=createRequire(import.meta.url);
 
 // src/command.ts
-import fs2 from "node:fs";
+import fs4 from "node:fs";
 import { spawn } from "node:child_process";
-import path3 from "node:path";
+import path4 from "node:path";
 import { fileURLToPath } from "node:url";
 
 // src/lib/cache.ts
@@ -27,6 +27,35 @@ function isCacheStale(cache2) {
 function isCacheVeryStale(cache2) {
   if (!cache2?.ts) return true;
   return Date.now() / 1e3 - cache2.ts > STALE_THRESHOLD;
+}
+
+// src/lib/lock.ts
+import fs2 from "node:fs";
+import os2 from "node:os";
+import path2 from "node:path";
+var LOCK_PATH = path2.join(os2.homedir(), ".claude", ".statusline-data.lock");
+function isCollectorRunning() {
+  let pid;
+  try {
+    pid = Number(fs2.readFileSync(LOCK_PATH, "utf-8").trim());
+  } catch {
+    return false;
+  }
+  if (!(pid > 0)) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+function claimLock(pid) {
+  try {
+    fs2.writeFileSync(LOCK_PATH, String(pid), { flag: "wx" });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // node_modules/chalk/source/vendor/ansi-styles/index.js
@@ -217,7 +246,7 @@ var ansi_styles_default = ansiStyles;
 
 // node_modules/chalk/source/vendor/supports-color/index.js
 import process2 from "node:process";
-import os2 from "node:os";
+import os3 from "node:os";
 import tty from "node:tty";
 function hasFlag(flag, argv = globalThis.Deno ? globalThis.Deno.args : process2.argv) {
   const prefix = flag.startsWith("-") ? "" : flag.length === 1 ? "-" : "--";
@@ -282,7 +311,7 @@ function _supportsColor(haveStream, { streamIsTTY, sniffFlags = true } = {}) {
     return min;
   }
   if (process2.platform === "win32") {
-    const osRelease = os2.release().split(".");
+    const osRelease = os3.release().split(".");
     if (Number(osRelease[0]) >= 10 && Number(osRelease[2]) >= 10586) {
       return Number(osRelease[2]) >= 14931 ? 3 : 2;
     }
@@ -559,24 +588,42 @@ function resetTimeLocal(resetsAt) {
 }
 
 // src/lib/git.ts
-import { execSync } from "node:child_process";
-import path2 from "node:path";
-function getGitInfo() {
+import fs3 from "node:fs";
+import path3 from "node:path";
+function findGitDir(start) {
+  let dir = path3.resolve(start);
+  for (; ; ) {
+    const dotGit = path3.join(dir, ".git");
+    let st;
+    try {
+      st = fs3.statSync(dotGit);
+    } catch {
+      const parent = path3.dirname(dir);
+      if (parent === dir) return null;
+      dir = parent;
+      continue;
+    }
+    if (st.isDirectory()) return { toplevel: dir, gitDir: dotGit };
+    try {
+      const line = fs3.readFileSync(dotGit, "utf-8").trim();
+      const m = /^gitdir:\s*(.+)$/.exec(line);
+      if (m) return { toplevel: dir, gitDir: path3.resolve(dir, m[1].trim()) };
+    } catch {
+    }
+    return { toplevel: dir, gitDir: dotGit };
+  }
+}
+function readBranch(gitDir) {
+  const head = fs3.readFileSync(path3.join(gitDir, "HEAD"), "utf-8").trim();
+  const ref = /^ref:\s*refs\/heads\/(.+)$/.exec(head);
+  if (ref) return ref[1];
+  return head.slice(0, 7);
+}
+function getGitInfo(cwd = process.cwd()) {
   try {
-    const branch = execSync("git rev-parse --abbrev-ref HEAD", {
-      timeout: 1e3,
-      encoding: "utf-8",
-      stdio: ["pipe", "pipe", "pipe"],
-      windowsHide: true
-    }).trim();
-    const toplevel = execSync("git rev-parse --show-toplevel", {
-      timeout: 1e3,
-      encoding: "utf-8",
-      stdio: ["pipe", "pipe", "pipe"],
-      windowsHide: true
-    }).trim();
-    const repo = path2.basename(toplevel);
-    return `${repo}:${branch}`;
+    const found = findGitDir(cwd);
+    if (!found) return "";
+    return `${path3.basename(found.toplevel)}:${readBranch(found.gitDir)}`;
   } catch {
     return "";
   }
@@ -685,9 +732,9 @@ function statusIcon(incident) {
       return source_default.dim(label);
   }
 }
-function formatStatusLine(model2, tokensUsed2, cache2) {
+function formatStatusLine(model2, tokensUsed2, cache2, cwd) {
   const ctxPct2 = Math.min(Math.round(tokensUsed2 / COMPACT_AT * 100), 100);
-  const git = getGitInfo();
+  const git = getGitInfo(cwd);
   const stale2 = isCacheVeryStale(cache2);
   const DIVIDER_W = 80;
   const line1Parts = [source_default.cyan.bold(`\u26A1 ${model2}`)];
@@ -705,10 +752,10 @@ ${line3}`;
 }
 
 // src/command.ts
-var __dirname = path3.dirname(fileURLToPath(import.meta.url));
+var __dirname = path4.dirname(fileURLToPath(import.meta.url));
 var data = {};
 try {
-  const input = fs2.readFileSync(0, "utf-8");
+  const input = fs4.readFileSync(0, "utf-8");
   data = JSON.parse(input);
 } catch {
 }
@@ -718,22 +765,24 @@ var ctxSize = Math.floor(Number(data.context_window?.context_window_size) || 2e5
 var tokensUsed = Math.floor(ctxSize * ctxPct / 100);
 var cache = readCache();
 var stale = isCacheStale(cache);
-if (stale) {
+if (stale && !isCollectorRunning()) {
   try {
-    const collector = path3.join(__dirname, "collector.mjs");
+    const collector = path4.join(__dirname, "collector.mjs");
     const child = spawn(process.execPath, [collector], {
       detached: true,
       stdio: "ignore",
       windowsHide: true
     });
+    if (child.pid) claimLock(child.pid);
     child.unref();
   } catch {
   }
 }
 try {
-  const output = formatStatusLine(model, tokensUsed, cache);
-  fs2.writeFileSync(1, output);
+  const cwd = data.workspace?.current_dir ?? data.cwd;
+  const output = formatStatusLine(model, tokensUsed, cache, cwd);
+  fs4.writeFileSync(1, output);
 } catch {
-  fs2.writeFileSync(1, `${model} | ?`);
+  fs4.writeFileSync(1, `${model} | ?`);
 }
 process.exit(0);

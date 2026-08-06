@@ -45,4 +45,8 @@ export interface CacheData {
   ts: number;
   usage?: UsageData;
   incident?: IncidentInfo | null;
+  /** Cached `claude --version` output — the CLI is a ~270MB binary, so we
+   *  only re-spawn it once a day rather than on every collector run. */
+  version?: string;
+  versionTs?: number;
 }

@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { StdinData } from "./lib/types.js";
 import { readCache, isCacheStale } from "./lib/cache.js";
+import { isCollectorRunning, claimLock } from "./lib/lock.js";
 import { formatStatusLine } from "./components/StatusLine.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -23,7 +24,7 @@ const tokensUsed = Math.floor((ctxSize * ctxPct) / 100);
 // Read cache, spawn collector if stale
 const cache = readCache();
 const stale = isCacheStale(cache);
-if (stale) {
+if (stale && !isCollectorRunning()) {
   try {
     const collector = path.join(__dirname, "collector.mjs");
     const child = spawn(process.execPath, [collector], {
@@ -31,13 +32,19 @@ if (stale) {
       stdio: "ignore",
       windowsHide: true,
     });
+    // Claim the lock on the child's behalf, now — it takes ~80ms to boot and
+    // grab it itself, and every session rendering in that window would
+    // otherwise spawn its own doomed collector. "wx" makes this atomic, so if
+    // two sessions race here the loser's collector simply exits.
+    if (child.pid) claimLock(child.pid);
     child.unref();
   } catch {}
 }
 
 // Format and write output atomically
 try {
-  const output = formatStatusLine(model, tokensUsed, cache);
+  const cwd = data.workspace?.current_dir ?? data.cwd;
+  const output = formatStatusLine(model, tokensUsed, cache, cwd);
   fs.writeFileSync(1, output);
 } catch {
   fs.writeFileSync(1, `${model} | ?`);

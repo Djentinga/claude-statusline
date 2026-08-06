@@ -3,10 +3,10 @@ import os from "node:os";
 import path from "node:path";
 import { execSync } from "node:child_process";
 import { CACHE_PATH, CACHE_TTL, readCache } from "./lib/cache.js";
+import { LOCK_PATH } from "./lib/lock.js";
 import type { CacheData } from "./lib/types.js";
 
 const CREDS_PATH = path.join(os.homedir(), ".claude", ".credentials.json");
-const LOCK_PATH = path.join(os.homedir(), ".claude", ".statusline-data.lock");
 const RATE_LIMIT_BACKOFF = 10 * 60;
 
 function acquireLock(): boolean {
@@ -18,6 +18,8 @@ function acquireLock(): boolean {
   // Lock exists — check if holder is alive
   try {
     const pid = Number(fs.readFileSync(LOCK_PATH, "utf-8").trim());
+    // Our spawning command already claimed the lock for us.
+    if (pid === process.pid) return true;
     if (pid > 0) {
       try {
         process.kill(pid, 0);
@@ -37,19 +39,25 @@ function acquireLock(): boolean {
   }
 }
 
-function getClaudeVersion(): string {
+// `claude` is a ~270MB binary; spawning it costs ~450ms and real memory.
+// The version only changes on upgrade, so cache it for a day.
+const VERSION_TTL = 24 * 60 * 60;
+
+function getClaudeVersion(cache: CacheData | null): string {
+  if (cache?.version && cache.versionTs && Date.now() / 1000 - cache.versionTs < VERSION_TTL) {
+    return cache.version;
+  }
   try {
     return execSync("claude --version", { encoding: "utf-8", timeout: 2000, windowsHide: true }).trim() || "unknown";
   } catch {
-    return "unknown";
+    return cache?.version ?? "unknown";
   }
 }
 
-async function fetchUsage(): Promise<unknown | null> {
+async function fetchUsage(version: string): Promise<unknown | null> {
   try {
     const creds = JSON.parse(fs.readFileSync(CREDS_PATH, "utf-8"));
     const token = creds.claudeAiOauth.accessToken;
-    const version = getClaudeVersion();
     const resp = await fetch("https://api.anthropic.com/api/oauth/usage", {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -104,12 +112,18 @@ async function main() {
       return;
     }
 
-    const [usage, incident] = await Promise.all([fetchUsage(), fetchIncident()]);
+    const version = getClaudeVersion(cache);
+    const versionTs =
+      version === cache?.version && cache?.versionTs ? cache.versionTs : Date.now() / 1000;
+
+    const [usage, incident] = await Promise.all([fetchUsage(version), fetchIncident()]);
 
     const result = {
       ts: Date.now() / 1000,
       usage,
       incident,
+      version,
+      versionTs,
     };
 
     // Atomic write: temp file + rename

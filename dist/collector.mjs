@@ -2,8 +2,8 @@ process.env.FORCE_COLOR='1';import{createRequire}from'module';const require=crea
 
 // src/collector.ts
 import fs2 from "node:fs";
-import os2 from "node:os";
-import path2 from "node:path";
+import os3 from "node:os";
+import path3 from "node:path";
 import { execSync } from "node:child_process";
 
 // src/lib/cache.ts
@@ -21,9 +21,13 @@ function readCache() {
   }
 }
 
-// src/collector.ts
-var CREDS_PATH = path2.join(os2.homedir(), ".claude", ".credentials.json");
+// src/lib/lock.ts
+import os2 from "node:os";
+import path2 from "node:path";
 var LOCK_PATH = path2.join(os2.homedir(), ".claude", ".statusline-data.lock");
+
+// src/collector.ts
+var CREDS_PATH = path3.join(os3.homedir(), ".claude", ".credentials.json");
 var RATE_LIMIT_BACKOFF = 10 * 60;
 function acquireLock() {
   try {
@@ -33,6 +37,7 @@ function acquireLock() {
   }
   try {
     const pid = Number(fs2.readFileSync(LOCK_PATH, "utf-8").trim());
+    if (pid === process.pid) return true;
     if (pid > 0) {
       try {
         process.kill(pid, 0);
@@ -50,18 +55,21 @@ function acquireLock() {
     return false;
   }
 }
-function getClaudeVersion() {
+var VERSION_TTL = 24 * 60 * 60;
+function getClaudeVersion(cache) {
+  if (cache?.version && cache.versionTs && Date.now() / 1e3 - cache.versionTs < VERSION_TTL) {
+    return cache.version;
+  }
   try {
     return execSync("claude --version", { encoding: "utf-8", timeout: 2e3, windowsHide: true }).trim() || "unknown";
   } catch {
-    return "unknown";
+    return cache?.version ?? "unknown";
   }
 }
-async function fetchUsage() {
+async function fetchUsage(version) {
   try {
     const creds = JSON.parse(fs2.readFileSync(CREDS_PATH, "utf-8"));
     const token = creds.claudeAiOauth.accessToken;
-    const version = getClaudeVersion();
     const resp = await fetch("https://api.anthropic.com/api/oauth/usage", {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -106,14 +114,18 @@ async function main() {
     if (shouldSkipFetch(cache)) {
       return;
     }
-    const [usage, incident] = await Promise.all([fetchUsage(), fetchIncident()]);
+    const version = getClaudeVersion(cache);
+    const versionTs = version === cache?.version && cache?.versionTs ? cache.versionTs : Date.now() / 1e3;
+    const [usage, incident] = await Promise.all([fetchUsage(version), fetchIncident()]);
     const result = {
       ts: Date.now() / 1e3,
       usage,
-      incident
+      incident,
+      version,
+      versionTs
     };
-    const dir = path2.dirname(CACHE_PATH);
-    const tmp = path2.join(dir, `.statusline-cache-${process.pid}.tmp`);
+    const dir = path3.dirname(CACHE_PATH);
+    const tmp = path3.join(dir, `.statusline-cache-${process.pid}.tmp`);
     fs2.writeFileSync(tmp, JSON.stringify(result));
     fs2.renameSync(tmp, CACHE_PATH);
   } finally {
