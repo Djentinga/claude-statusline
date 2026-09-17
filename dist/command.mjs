@@ -556,6 +556,7 @@ var source_default = chalk;
 // src/lib/format.ts
 var COMPACT_AT = 967e3;
 var BAR_W = 8;
+var CACHE_WARN_SECS = 30;
 function formatTokens(tokens) {
   if (tokens < 1e3) return String(tokens);
   if (tokens < 1e6) return Math.floor(tokens / 1e3) + "k";
@@ -716,6 +717,18 @@ function usageDisplay(usage, stale2) {
   return parts.join("");
 }
 
+// src/components/CacheIndicator.ts
+function formatLeft(secs) {
+  return secs >= 60 ? `${Math.floor(secs / 60)}m` : `${secs}s`;
+}
+function cacheIndicator(pc, now = Date.now()) {
+  if (!pc || typeof pc.expires_at !== "number") return "";
+  const left = Math.floor(pc.expires_at - now / 1e3);
+  if (pc.warm === false || left <= 0) return source_default.red("\u2717 Cache");
+  if (left <= CACHE_WARN_SECS) return source_default.yellow(`\u26A0 Cache ${formatLeft(left)}`);
+  return source_default.green(`\u2713 Cache ${formatLeft(left)}`);
+}
+
 // src/components/StatusLine.ts
 var SEP2 = source_default.dim(" \u2502 ");
 function statusIcon(incident) {
@@ -732,13 +745,15 @@ function statusIcon(incident) {
       return source_default.dim(label);
   }
 }
-function formatStatusLine(model2, tokensUsed2, cache2, cwd) {
+function formatStatusLine(model2, tokensUsed2, cache2, cwd, promptCache) {
   const ctxPct2 = Math.min(Math.round(tokensUsed2 / COMPACT_AT * 100), 100);
   const git = getGitInfo(cwd);
   const stale2 = isCacheVeryStale(cache2);
   const DIVIDER_W = 80;
   const line1Parts = [source_default.cyan.bold(`\u26A1 ${model2}`)];
   if (git) line1Parts.push(source_default.cyan(git));
+  const promptCacheStr = cacheIndicator(promptCache);
+  if (promptCacheStr) line1Parts.push(promptCacheStr);
   const line1 = line1Parts.join(SEP2);
   const divider = source_default.dim("\u2500".repeat(DIVIDER_W));
   const ctxC = ctxColor(ctxPct2);
@@ -780,7 +795,7 @@ if (stale && !isCollectorRunning()) {
 }
 try {
   const cwd = data.workspace?.current_dir ?? data.cwd;
-  const output = formatStatusLine(model, tokensUsed, cache, cwd);
+  const output = formatStatusLine(model, tokensUsed, cache, cwd, data.prompt_cache);
   fs4.writeFileSync(1, output);
 } catch {
   fs4.writeFileSync(1, `${model} | ?`);

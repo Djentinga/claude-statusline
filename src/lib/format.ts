@@ -1,5 +1,6 @@
 export const COMPACT_AT = 967_000;
 export const BAR_W = 8;
+export const CACHE_WARN_SECS = 30;
 
 export function formatTokens(tokens: number): string {
   if (tokens < 1000) return String(tokens);

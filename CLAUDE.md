@@ -24,11 +24,15 @@ Two bundled entry points (`dist/`) built from `src/`, plus a hook:
 
 3. **`scripts/ensure-settings.mjs`** — SessionStart hook (registered in `hooks/hooks.json`). Patches `~/.claude/settings.json` to register `node .../dist/command.mjs`. Idempotent. Node (not Python) for cross-platform support — Windows has no `python3`.
 
+### Prompt cache indicator
+
+Line 1 shows `✓ Cache 42m` (green), `⚠ Cache 25s` (yellow, ≤ `CACHE_WARN_SECS`), or `✗ Cache` (red — next prompt re-caches). Data comes from stdin `prompt_cache` (`warm`, `expires_at` in epoch seconds), so it's per-session with no shared state. Hidden until the first API response. Stays fresh because `ensure-settings.mjs` sets `statusLine.refreshInterval: 5` (only if unset), and Claude also re-renders at cache expiry.
+
 ### Component hierarchy
 
 ```
 StatusLine          — main formatter
-├── Line 1          — model, git info
+├── Line 1          — model, git info, prompt cache indicator
 ├── Divider
 ├── Line 2          — context bar, usage bars
 │   ├── Bar         — reusable progress bar with optional cutoff marker
@@ -52,6 +56,7 @@ When the usage API returns `five_hour` AND `seven_day` both `null` and `extra_us
 
 - `COMPACT_AT = 967_000` — auto-compact token threshold (100% on context bar)
 - `BAR_W = 8` — bar width in characters
+- `CACHE_WARN_SECS = 30` — prompt cache indicator turns yellow at/below this
 - `CACHE_TTL = 120` — seconds before triggering background refresh
 - `STALE_THRESHOLD = 240` — seconds before showing stale indicator (`~`)
 

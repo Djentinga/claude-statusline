@@ -5,10 +5,17 @@ export interface StdinData {
     context_window_size?: number;
   };
   cwd?: string;
+  prompt_cache?: PromptCache;
   workspace?: {
     current_dir?: string;
     project_dir?: string;
   };
+}
+
+export interface PromptCache {
+  warm?: boolean;
+  ttl?: string;         // "5m" | "1h"
+  expires_at?: number;  // epoch seconds
 }
 
 export interface UsageWindow {

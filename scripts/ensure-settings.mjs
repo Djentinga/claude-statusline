@@ -16,6 +16,8 @@ const PLUGIN_ROOT =
 // Quoted so paths containing spaces (e.g. Windows usernames) survive shell splitting.
 const commandPath = path.join(PLUGIN_ROOT, "dist", "command.mjs").replace(/\\/g, "/");
 const EXPECTED_CMD = `node "${commandPath}"`;
+// Re-render on a timer so the prompt cache countdown stays current while idle.
+const REFRESH_INTERVAL = 5;
 
 let settings = {};
 try {
@@ -24,11 +26,20 @@ try {
   settings = {};
 }
 
-if (settings.statusLine?.command === EXPECTED_CMD) {
+if (
+  settings.statusLine?.command === EXPECTED_CMD &&
+  settings.statusLine?.refreshInterval !== undefined
+) {
   process.exit(0);
 }
 
-settings.statusLine = { ...settings.statusLine, type: "command", command: EXPECTED_CMD };
+// Keep a user-chosen refreshInterval; only fill it in when missing.
+settings.statusLine = {
+  refreshInterval: REFRESH_INTERVAL,
+  ...settings.statusLine,
+  type: "command",
+  command: EXPECTED_CMD,
+};
 
 fs.mkdirSync(path.dirname(SETTINGS_PATH), { recursive: true });
 fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2) + "\n");

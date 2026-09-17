@@ -1,10 +1,11 @@
 import chalk from "chalk";
-import type { CacheData, IncidentInfo } from "../lib/types.js";
+import type { CacheData, IncidentInfo, PromptCache } from "../lib/types.js";
 import { COMPACT_AT, formatTokens } from "../lib/format.js";
 import { isCacheVeryStale } from "../lib/cache.js";
 import { getGitInfo } from "../lib/git.js";
 import { bar, ctxColor } from "./Bar.js";
 import { usageDisplay } from "./UsageDisplay.js";
+import { cacheIndicator } from "./CacheIndicator.js";
 
 const SEP = chalk.dim(" │ ");
 
@@ -24,15 +25,18 @@ export function formatStatusLine(
   tokensUsed: number,
   cache: CacheData | null,
   cwd?: string,
+  promptCache?: PromptCache,
 ): string {
   const ctxPct = Math.min(Math.round((tokensUsed / COMPACT_AT) * 100), 100);
   const git = getGitInfo(cwd);
   const stale = isCacheVeryStale(cache);
   const DIVIDER_W = 80;
 
-  // Line 1: Model, Git
+  // Line 1: Model, Git, Prompt cache
   const line1Parts = [chalk.cyan.bold(`⚡ ${model}`)];
   if (git) line1Parts.push(chalk.cyan(git));
+  const promptCacheStr = cacheIndicator(promptCache);
+  if (promptCacheStr) line1Parts.push(promptCacheStr);
   const line1 = line1Parts.join(SEP);
 
   // Divider

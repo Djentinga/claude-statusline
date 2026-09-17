@@ -44,7 +44,7 @@ if (stale && !isCollectorRunning()) {
 // Format and write output atomically
 try {
   const cwd = data.workspace?.current_dir ?? data.cwd;
-  const output = formatStatusLine(model, tokensUsed, cache, cwd);
+  const output = formatStatusLine(model, tokensUsed, cache, cwd, data.prompt_cache);
   fs.writeFileSync(1, output);
 } catch {
   fs.writeFileSync(1, `${model} | ?`);
