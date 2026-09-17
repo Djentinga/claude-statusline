@@ -1,3 +1,6 @@
+<img width="834" height="165" alt="image" src="https://github.com/user-attachments/assets/b294d988-e34f-4c11-a699-8611fb2098c2" />
+
+
 # claude-statusline
 
 Custom Claude Code statusline plugin with context-to-compact progress bar and API usage tracking.
